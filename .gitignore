@@ -10,6 +10,7 @@
 
 *.swp
 ]
+*.pyc
 
 # Packages
 *.egg
