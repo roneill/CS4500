@@ -1,10 +1,6 @@
-from stegan.audio import AudioFile
-
-class MP3File(AudioFile):
-    
+class PayloadData(object):
     def __init__(self):
-        self.headers = {}
-        self.data = bytearray()
+        self.payload = bytearray()
     
     @classmethod
     def fromFile(cls, path):

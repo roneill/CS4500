@@ -1,6 +1,4 @@
-from stegan.audio import AudioFile
-
-class MP3File(AudioFile):
+class AudioFile(object):
     
     def __init__(self):
         self.headers = {}
