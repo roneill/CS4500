@@ -48,9 +48,10 @@ def run():
         args = parse_args()
     except IndexError:
         print "Stegan - The audio steganography project"
+        print_usage()
+        sys.exit(1)
     except Exception as e:
         print "Error:", e
-    finally:
         print_usage()
         sys.exit(1)
     
