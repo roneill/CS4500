@@ -1,14 +1,23 @@
 from stegan.audio import AudioFile
 
+import wave
+
 class WaveFile(AudioFile):
     
-    def __init__(self):
-        self.headers = {}
+    def __init__(self, header, data):
+        self.header = {}
         self.data = bytearray()
     
     @classmethod
     def fromFile(cls, path):
-        pass
-    
+        with wave.open(path, 'rb') as f:
+            header = f.getparams()
+            data = f.readFrames(header[3])
+            return WaveFile(header, data)
+        
     def writeToFile(self, path):
-        pass
+        with wave.open(path, 'wb') as f:
+            f.setParams(self.header)
+            f.writeFrames(self.data)
+            
+            
