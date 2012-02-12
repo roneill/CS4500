@@ -5,8 +5,13 @@ import wave
 class WaveFile(object):
     
     def __init__(self, header, data):
-        self.header = {}
-        self.data = bytearray()
+        self.header = header
+        self.data = bytearray(data)
+        
+        print "[WaveFile] New WaveFile"
+        print "[WaveFile] Header\n%s" % repr(self.header)
+        print "[WaveFile] len(data) = %s" % len(self.data)
+        print "[WaveFile] type(data) = %s" % type(self.data)
     
     @classmethod
     def fromFile(cls, path):
@@ -14,14 +19,15 @@ class WaveFile(object):
         
         header = f.getparams()
         data = f.readframes(header[3])
-        
+                
         f.close()
         
         return WaveFile(header, data)
         
     def writeToFile(self, path):
-        with wave.open(path, 'wb') as f:
-            f.setParams(self.header)
-            f.writeFrames(self.data)
-            
-            
+        f = wave.open(path, 'wb')
+        
+        f.setparams(self.header)
+        f.writeframes(str(self.data))
+        
+        f.close()

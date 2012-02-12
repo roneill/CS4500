@@ -58,6 +58,7 @@ def run_encode(args):
     
         #stegStrategy = StegStrategy.getStrategy()
         #trojan = stegStrategy.encode(payload, container)
+        
         trojan = modify_lsb.encode(payload, container)
         trojan.writeToFile(args['trojan'])
         
