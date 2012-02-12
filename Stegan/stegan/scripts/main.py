@@ -69,7 +69,20 @@ def run_encode(args):
         traceback.print_exc()
 
 def run_decode(args):
-    print "decoding"
+    print "[Stegan] Decoding from %s" % (args['trojan'])
+    
+    try:
+        trojan = WaveFile.fromFile(args['trojan'])
+
+        payload = modify_lsb.decode(trojan)
+
+        payload.writeToFile(args['payload'])
+        
+    except Exception as e:
+        print "[Stegan] There was an error while decoding"
+        print "[Stegan] %s" % type(e)
+        print "[Stegan] %s" % e
+        traceback.print_exc()
 
 
 def run():
