@@ -1,8 +1,8 @@
-from stegan.audio import AudioFile
+#from .. import audio
 
 import wave
 
-class WaveFile(AudioFile):
+class WaveFile(object):
     
     def __init__(self, header, data):
         self.header = {}
