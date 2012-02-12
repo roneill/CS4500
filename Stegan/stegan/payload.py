@@ -13,7 +13,6 @@ class Payload(object):
         with open(path, mode="wb") as f:
             f.write(self.data)
     
-    
     def __len__(self):
         """ Return the file size of the payload """
         return len(self.data)

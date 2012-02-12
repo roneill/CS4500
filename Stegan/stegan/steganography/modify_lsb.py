@@ -1,3 +1,5 @@
+import sys
+
 from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
 
@@ -23,12 +25,21 @@ def toggle_bit(int_type, offset):
 
 class BitArray(object):
     
-    def __init__(self, bytes):
-        """ byte must be an int 0 <= byte <= 256 """
-        self.bits = [int(b) for b in bin(bytes)[2:]]
-        
-        if len(self.bits) < 8:
-            self.bits = [0 for x in range(0, 8 - len(self.bits))] + self.bits
+    @classmethod
+    def from_bits(cls, bits):
+        arr = BitArray(0)
+        arr.bits = bits
+        return arr
+    
+    def __init__(self, n, size=8):
+        """ n must be an integer. """
+        self.bits = []
+
+        for idx in range(0, size):
+            self.bits.append(n % 2)
+            n = n / 2
+
+        self.bits.reverse()
     
     def test_bit(self, offset):
         return self.bits[offset] == 1
@@ -39,34 +50,36 @@ class BitArray(object):
     def get_bit(self, offset):
         return self.bits[offset]
     
+    def get_lsb(self):
+        return self.get_bit(-1)
+    
+    def set_lsb(self, val):
+        return self.set_bit(-1, val)
+    
     def __str__(self):
         return "0b%s" % ''.join([str(b) for b in self.bits])
 
-    def to_byte(self):
+    def to_int(self):
         return int(str(self), 2)
     
     def __iter__(self):
         return iter(self.bits)
+        
+    def __len__(self):
+        return len(self.bits)
+    
+    def __getitem__(self, key):
+        return self.get_bit(key)
 
-
-def integer_to_bits(n):
-    bits = []
+    def __setitem__(self, key, value):
+        return self.set_bit(key, value)
     
-    for idx in range(0, 31):
-        bits.append(n % 2)
-        n = n / 2
-    
-    bits.reverse()
-    return bits
-    
-def bits_to_integer(bits):
-    bitstr = "0b" + ''.join([str(b) for b in bits])
-    return int(bitstr, 2)
 
 def get_bit(bytearr, offset):
     """ Returns the bit at offset into a bytearray """
     byte_idx = offset / 8
     bit_idx = offset - (byte_idx * 8)
+    
     byte = bytearr[byte_idx]
     bits = BitArray(byte)
     
@@ -90,22 +103,49 @@ def get_lsb(byte):
 def encode(payload, container):
     trojan_data = []     # A list of integers that
 
-    payload_size = len(payload)
-    payload_size_bits = integer_to_bits(payload_size)
+    payload_size = len(payload)     # number of bytes in payload
+    payload_size_in_bits = payload_size * 8
+    payload_size_bits = BitArray(payload_size, size=32)
 
     print "[modify_lsb] encode - payload_size = %s" % payload_size
     print "[modify_lsb] encode - len(payload_size_bits) = %s" % len(payload_size_bits)
     print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
     
+    print "[modify_lsb] bits written"
+    
     for cidx, cbyte in enumerate(container.data):
 
-        # First 32 bytes of the trojan will contain the file size of 
-        # the payload.
-        if cidx < 31:
-            cbyte = set_lsb(cbyte, payload_size_bits[cidx])
+        # First 32 bytes of the trojan will have the file size of the 
+        # payload encoded in their lsb. [0, 31]
+        if 0 <= cidx <= 31:
+            paysize_bit = payload_size_bits[cidx]
             
-        trojan_data.append(cbyte)
+            #sys.stdout.write("%s" % paysize_bit)
+            tbyte = set_lsb(cbyte, paysize_bit)
+            
+        # Skip writing any trojan data in byte at index 32
+        elif cidx == 32:
+            tbyte = cbyte
+            
+        # Trojan bytes [33, n] will have the payload encoded in their lsbs,
+        # where n is payload_size * 8.
+        elif 33 <= cidx:
+            paybit_idx = (cidx - 33)
+            
+            if paybit_idx < payload_size_in_bits:
+                payload_bit = get_bit(payload.data, paybit_idx)
+                
+                #print "paybit is %s, payload_bit is %s" % (paybit_idx, payload_bit)
+                sys.stdout.write("%s" % payload_bit)
 
+                tbyte = set_lsb(cbyte, payload_bit)
+            else:
+                tbyte = cbyte
+            
+        trojan_data.append(tbyte)
+        
+    print ""
+    
     return WaveFile(container.header, trojan_data)
 
 def decode(trojan):
@@ -114,14 +154,50 @@ def decode(trojan):
     payload_size_bits = []
     payload_size = 0
     
+    paybit_stack = []
+    
     for tidx, tbyte in enumerate(trojan.data):
         
-        if tidx < 31:
-            payload_size_bits.append(get_lsb(tbyte))
-        elif tidx == 31:
-            payload_size = bits_to_integer(payload_size_bits)
+        # First 32 bytes of the trojan will have the file size of the 
+        # payload encoded in their lsb. [0, 31]
+        if 0 <= tidx <= 31:
+            paysize_bit = get_lsb(tbyte)
+            payload_size_bits.append(paysize_bit)
+            
+            sys.stdout.write("%s" % paysize_bit)
+            
+        # There is no payload data at trojan byte index 32. Let's compute
+        # the integer value of the payload_size here for use later.
+        elif tidx == 32:
+            payload_size = BitArray.from_bits(payload_size_bits).to_int()
+            
             print "[modify_lsb] decode - payload_size = %s" % payload_size
-            print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
+            print "[modify_lsb] decode - payload_size_bits = %s" % \
+                ''.join([str(b) for b in payload_size_bits])
+            print "[modify_lsb] bits read"
+            
+        # Trojan bytes [33, n] will have the payload encoded in their lsbs,
+        # where n is payload_size * 8, where payload_size is the number of 
+        # bytes in payload.
+        elif 33 <= tidx <= (33 + (payload_size * 8)):
+            payload_bit = get_lsb(tbyte)
+
+            sys.stdout.write("%s" % payload_bit)            
+            paybit_stack.append(payload_bit)
+            
+            # We've read enough bits to make a byte. DO IT.
+            if len(paybit_stack) == 8:
+                paybyte = BitArray.from_bits(paybit_stack).to_int()
+                payload_data.append(paybyte)
+                paybit_stack = []
+            
+        # There's no more payload data to be read from the trojan, let's break
+        else:
+            break
+        
+        
+    print ""
     
+    print "[modify_lsb] len(payload_data) = %s (result)" % len(payload_data)
     
     return Payload(bytearray(payload_data))
