@@ -1,3 +1,4 @@
+from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
 
 def testBit(int_type, offset):
@@ -22,9 +23,9 @@ def toggle_bit(int_type, offset):
 
 class BitArray(object):
     
-    def __init__(self, byte):
+    def __init__(self, bytes):
         """ byte must be an int 0 <= byte <= 256 """
-        self.bits = [int(b) for b in bin(byte)[2:]]
+        self.bits = [int(b) for b in bin(bytes)[2:]]
         
         if len(self.bits) < 8:
             self.bits = [0 for x in range(0, 8 - len(self.bits))] + self.bits
@@ -48,9 +49,19 @@ class BitArray(object):
         return iter(self.bits)
 
 
-def integer_to_bytearray(n):
-    return bytearray(str(n), "ascii")
-
+def integer_to_bits(n):
+    bits = []
+    
+    for idx in range(0, 31):
+        bits.append(n % 2)
+        n = n / 2
+    
+    bits.reverse()
+    return bits
+    
+def bits_to_integer(bits):
+    bitstr = "0b" + ''.join([str(b) for b in bits])
+    return int(bitstr, 2)
 
 def get_bit(bytearr, offset):
     """ Returns the bit at offset into a bytearray """
@@ -73,49 +84,44 @@ def flip_lsb(byte):
     else:
         return byte - 1
 
+def get_lsb(byte):
+    return (byte % 2)
+
 def encode(payload, container):
     trojan_data = []     # A list of integers that
 
     payload_size = len(payload)
-    payload_size_bits = [bit for byte in integer_to_bytearray(payload_size)
-                                for bit in BitArray(byte)]
+    payload_size_bits = integer_to_bits(payload_size)
+
+    print "[modify_lsb] encode - payload_size = %s" % payload_size
+    print "[modify_lsb] encode - len(payload_size_bits) = %s" % len(payload_size_bits)
+    print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
+    
     for cidx, cbyte in enumerate(container.data):
 
-        # First 32-bytes of the trojan will contain the file size of 
+        # First 32 bytes of the trojan will contain the file size of 
         # the payload.
-        if cidx < 32:
+        if cidx < 31:
             cbyte = set_lsb(cbyte, payload_size_bits[cidx])
             
         trojan_data.append(cbyte)
 
     return WaveFile(container.header, trojan_data)
 
-def encode2(payload, container):
-    trojan_data = []     # A list of integers that
+def decode(trojan):
+    payload_data = []
     
-    payload_size = len(payload)
-    payload_size_bits = [bit for byte in integer_to_bytearray(payload_size)
-                                for bit in BitArray(byte)]
+    payload_size_bits = []
+    payload_size = 0
     
-    c_len = float(len(container.data))
-    
-    for cidx, cbyte in enumerate(container.data):
-        cbits = BitArray(cbyte)
+    for tidx, tbyte in enumerate(trojan.data):
         
-        # First 32-bytes of the trojan will contain the file size of 
-        # the payload.
-        if cidx < 32: 
-            cbits.set_bit(cidx % 8, payload_size_bits[cidx])
-            
-        # Each byte of the container gets one bit of data from the payload
-        #else:
-        #    pass
-        
-        trojan_data.append(cbits.to_byte())
-        print "%s percent" % (cidx / c_len)
+        if tidx < 31:
+            payload_size_bits.append(get_lsb(tbyte))
+        elif tidx == 31:
+            payload_size = bits_to_integer(payload_size_bits)
+            print "[modify_lsb] decode - payload_size = %s" % payload_size
+            print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
     
-    return WaveFile(container.header, trojan_data)
-
-
-def decode(container):
-    pass
+    
+    return Payload(bytearray(payload_data))

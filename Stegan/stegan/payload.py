@@ -10,7 +10,8 @@ class Payload(object):
         return Payload(data)
     
     def writeToFile(self, path):
-        pass
+        with open(path, mode="wb") as f:
+            f.write(self.data)
     
     
     def __len__(self):
