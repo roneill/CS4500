@@ -10,10 +10,14 @@ class WaveFile(object):
     
     @classmethod
     def fromFile(cls, path):
-        with wave.open(path, 'rb') as f:
-            header = f.getparams()
-            data = f.readFrames(header[3])
-            return WaveFile(header, data)
+        f = wave.open(path, 'rb')
+        
+        header = f.getparams()
+        data = f.readframes(header[3])
+        
+        f.close()
+        
+        return WaveFile(header, data)
         
     def writeToFile(self, path):
         with wave.open(path, 'wb') as f:

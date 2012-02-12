@@ -7,10 +7,9 @@ The Steganographic Project: hide data inside music files
 import sys
 import traceback
 
-print sys.path
-
 from stegan.payload import Payload
-from stegan.audio.wave import WaveFile
+from stegan.audio.wavefile import WaveFile
+from stegan.steganography import modify_lsb
 
 def parse_args():
     args = {}
@@ -59,8 +58,9 @@ def run_encode(args):
     
         #stegStrategy = StegStrategy.getStrategy()
         #trojan = stegStrategy.encode(payload, container)
-    
-        #trojan.writeToFile(args['tojan'])
+        trojan = modify_lsb.encode(payload, container)
+        trojan.writeToFile(args['trojan'])
+        
     except Exception as e:
         print "[Stegan] There was an error while encoding"
         print "[Stegan] %s" % type(e)
