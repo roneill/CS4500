@@ -22,6 +22,7 @@ def encode(payload, container):
 
     print "[modify_lsb] encode - payload_spacing = %s" % payload_spacing
     print "[modify_lsb] encode - payload_size = %s" % payload_size
+    print "[modify_lsb] encode - len(payload.data) = %s" % len(payload.data)
 
     #print "[modify_lsb] encode - len(payload_size_bits) = %s" % len(payload_size_bits)
     #print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
@@ -61,8 +62,6 @@ def encode(payload, container):
             paybit_space += 1    
                 
         trojan_data.append(tbyte)
-        
-    print ""
     
     return WaveFile(container.header, trojan_data)
 
@@ -133,8 +132,6 @@ def decode(trojan):
             print "Out of %s" % payload_size
             break
         
-    # print ""
-    
-    print "[modify_lsb] len(payload_data) = %s (result)" % len(payload_data)
+    print "[modify_lsb] decode - len(payload_data) = %s (result)" % len(payload_data)
     
     return Payload(bytearray(payload_data))
