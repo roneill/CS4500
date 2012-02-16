@@ -3,22 +3,22 @@ import unittest
 
 sys.path.insert(0, os.path.abspath(os.getcwd()))
 
-from stegan.scripts import stegan
+from stegan.scripts import main
 
 class TestStegan(unittest.TestCase):
     def setUp(self):
-        pass
+        del(sys.argv[1:])
     
     def tearDown(self):
         pass
 
     def test_parseArgs_whenNoArguments_raiseException(self):
-        self.assertRaises(IndexError, stegan.parse_args)
+        self.assertRaises(Exception, main.parse_args)
     
     def test_parseArgs_whenFirstArgNotEncodeOrDecode_raiseException(self):
         sys.argv.append('--unknown')
         
-        self.assertRaises(Exception, stegan.parse_args)
+        self.assertRaises(Exception, main.parse_args)
         
         sys.argv.remove('--unknown')
         
@@ -27,7 +27,7 @@ class TestStegan(unittest.TestCase):
         sys.argv.append('arg1')
         sys.argv.append('arg2')
         
-        self.assertRaises(Exception, stegan.parse_args)
+        self.assertRaises(Exception, main.parse_args)
         
         sys.argv.remove('--encode')
         sys.argv.remove('arg1')
@@ -40,7 +40,7 @@ class TestStegan(unittest.TestCase):
         sys.argv.append('arg3')
         sys.argv.append('arg4')
 
-        self.assertRaises(Exception, stegan.parse_args)
+        self.assertRaises(Exception, main.parse_args)
 
         sys.argv.remove('--encode')
         sys.argv.remove('arg1')
@@ -60,7 +60,7 @@ class TestStegan(unittest.TestCase):
         sys.argv.append('arg2')
         sys.argv.append('arg3')
         
-        self.assertEqual(expectedArgs, stegan.parse_args())
+        self.assertEqual(expectedArgs, main.parse_args())
         
         sys.argv.remove('--encode')
         sys.argv.remove('arg1')
@@ -71,7 +71,7 @@ class TestStegan(unittest.TestCase):
         sys.argv.append('--decode')
         sys.argv.append('arg1')
 
-        self.assertRaises(Exception, stegan.parse_args)
+        self.assertRaises(Exception, main.parse_args)
 
         sys.argv.remove('--decode')
         sys.argv.remove('arg1')
@@ -82,7 +82,7 @@ class TestStegan(unittest.TestCase):
         sys.argv.append('arg2')
         sys.argv.append('arg3')
 
-        self.assertRaises(Exception, stegan.parse_args)
+        self.assertRaises(Exception, main.parse_args)
 
         sys.argv.remove('--decode')
         sys.argv.remove('arg1')
@@ -99,7 +99,7 @@ class TestStegan(unittest.TestCase):
         sys.argv.append('arg1')
         sys.argv.append('arg2')
 
-        self.assertEqual(expectedArgs, stegan.parse_args())
+        self.assertEqual(expectedArgs, main.parse_args())
 
         sys.argv.remove('--decode')
         sys.argv.remove('arg1')

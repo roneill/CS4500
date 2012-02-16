@@ -1,8 +1,7 @@
 import sys, os
 import unittest
 
-sys.path.insert(0,'..')
-from payload import Payload
+from stegan.payload import Payload
 
 class TestWaveFile(unittest.TestCase):
     def setUp(self):
