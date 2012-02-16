@@ -1,3 +1,5 @@
+from stegan.utils.bitarray import BitArray
+
 def get_bit(bytearr, offset):
     """ Returns the bit at offset into a bytearray """
     byte_idx = offset / 8
