@@ -110,9 +110,6 @@ def decode(trojan):
         # Trojan bytes [33, n] will have the payload encoded in their lsbs,
         # where n is payload_size * 8, where payload_size is the number of 
         # bytes in payload.
-
-        # this will no longer be bounded by the size of the payload data
-        # it will be bounded by the size of the trojan data
         elif 33 <= tidx:
 
             if paybit_space == payload_spacing:
