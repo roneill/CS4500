@@ -2,85 +2,15 @@ import sys, math
 
 from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
+from stegan.utils.bitarray import BitArray
+from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 
-class BitArray(object):
-    
-    @classmethod
-    def from_bits(cls, bits):
-        arr = BitArray(0)
-        arr.bits = bits
-        return arr
-    
-    def __init__(self, n, size=8):
-        """ n must be an integer. """
-        self.bits = []
-
-        for idx in range(0, size):
-            self.bits.append(n % 2)
-            n = n / 2
-
-        self.bits.reverse()
-    
-    def test_bit(self, offset):
-        return self.bits[offset] == 1
-
-    def set_bit(self, offset, val):
-        self.bits[offset] == val
-    
-    def get_bit(self, offset):
-        return self.bits[offset]
-    
-    def get_lsb(self):
-        return self.get_bit(-1)
-    
-    def set_lsb(self, val):
-        return self.set_bit(-1, val)
-    
-    def __str__(self):
-        return "0b%s" % ''.join([str(b) for b in self.bits])
-
-    def to_int(self):
-        return int(str(self), 2)
-    
-    def __iter__(self):
-        return iter(self.bits)
-        
-    def __len__(self):
-        return len(self.bits)
-    
-    def __getitem__(self, key):
-        return self.get_bit(key)
-
-    def __setitem__(self, key, value):
-        return self.set_bit(key, value)
-    
-
-def get_bit(bytearr, offset):
-    """ Returns the bit at offset into a bytearray """
-    byte_idx = offset / 8
-    bit_idx = offset - (byte_idx * 8)
-    
-    byte = bytearr[byte_idx]
-    bits = BitArray(byte)
-    
-    return bits.get_bit(bit_idx)
-
-def set_lsb(byte, bit):
-    if byte % 2 != bit:
-        return flip_lsb(byte)
-    else:
-        return byte
-        
-def flip_lsb(byte):
-    if byte % 2 == 0:
-        return byte + 1
-    else:
-        return byte - 1
-
-def get_lsb(byte):
-    return (byte % 2)
 
 def encode(payload, container):
+    """ Encode a payload inside an audio container using the Modify 
+    Least Significant Bit (LSB) algorithm. Returns a Trojan AudioFile
+    with the payload inside it.
+    """
     trojan_data = []     # A list of integers that
 
     payload_size = len(payload)     # number of bytes in payload
@@ -91,12 +21,12 @@ def encode(payload, container):
     payload_spacing = int(math.floor((len(container.data) - 32) / payload_size_in_bits))
 
     print "[modify_lsb] encode - payload_spacing = %s" % payload_spacing
-    
     print "[modify_lsb] encode - payload_size = %s" % payload_size
-    print "[modify_lsb] encode - len(payload_size_bits) = %s" % len(payload_size_bits)
-    print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
+
+    #print "[modify_lsb] encode - len(payload_size_bits) = %s" % len(payload_size_bits)
+    #print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
     
-    print "[modify_lsb] bits written"    
+    #print "[modify_lsb] bits written"    
 
     paybit_idx = 0
     paybit_space = 0
@@ -136,7 +66,11 @@ def encode(payload, container):
     
     return WaveFile(container.header, trojan_data)
 
+
 def decode(trojan):
+    """ Decode a payload from a trojan AudioFile that has been encoded 
+    using the Modify LSB algorithm. Returns a Payload.
+    """
     payload_data = []
     
     payload_size_bits = []
@@ -166,12 +100,12 @@ def decode(trojan):
 
             payload_spacing = int(math.floor((len(trojan.data) - 32) / (payload_size * 8)))
 
-            print "Payload spacing is %s" % payload_spacing
-            
+            print "[modify_lsb] Payload spacing is %s" % payload_spacing
             print "[modify_lsb] decode - payload_size = %s" % payload_size
-            print "[modify_lsb] decode - payload_size_bits = %s" % \
-                ''.join([str(b) for b in payload_size_bits])
-            print "[modify_lsb] bits read"
+            
+            # print "[modify_lsb] decode - payload_size_bits = %s" % \
+            #    ''.join([str(b) for b in payload_size_bits])
+            #print "[modify_lsb] bits read"
             
         # Trojan bytes [33, n] will have the payload encoded in their lsbs,
         # where n is payload_size * 8, where payload_size is the number of 
@@ -202,7 +136,7 @@ def decode(trojan):
             print "Out of %s" % payload_size
             break
         
-    print ""
+    # print ""
     
     print "[modify_lsb] len(payload_data) = %s (result)" % len(payload_data)
     

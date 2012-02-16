@@ -8,10 +8,10 @@ class WaveFile(object):
         self.header = header
         self.data = bytearray(data)
         
-        print "[WaveFile] New WaveFile"
+        #print "[WaveFile] New WaveFile"
         print "[WaveFile] Header\n%s" % repr(self.header)
         print "[WaveFile] len(data) = %s" % len(self.data)
-        print "[WaveFile] type(data) = %s" % type(self.data)
+        #print "[WaveFile] type(data) = %s" % type(self.data)
     
     @classmethod
     def fromFile(cls, path):
