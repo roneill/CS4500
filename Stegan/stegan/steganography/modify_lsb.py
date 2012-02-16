@@ -77,8 +77,6 @@ def decode(trojan):
     
     paybit_stack = []
 
-    bits_read = 0
-
     payload_spacing = 0
     paybit_space = 0
     
@@ -125,11 +123,9 @@ def decode(trojan):
                 paybit_stack = []
                 
             paybit_space += 1    
-                
+            
         # There's no more payload data to be read from the trojan, let's break
         else:
-            print "Bits read is %s" % bits_read
-            print "Out of %s" % payload_size
             break
         
     print "[modify_lsb] decode - len(payload_data) = %s (result)" % len(payload_data)
