@@ -3,14 +3,14 @@ import unittest
 
 from stegan.payload import Payload
 
-class TestWaveFile(unittest.TestCase):
+class TestPayload(unittest.TestCase):
     def setUp(self):
         pass
     
     def tearDown(self):
         pass
 
-    def test__fromFile_whenFileNotExists_raiseException(self):
+    def test_fromFile_whenFileNotExists_raiseException(self):
         self.assertRaises(IOError, Payload.fromFile, "/superawesomecatpic.jpg")
 
     def test_fromFile_ReadFileSuccessful_DataEqualsExpected(self):

@@ -1,8 +1,7 @@
 import sys, os
 import unittest
 
-sys.path.insert(0,'..')
-from wavefile import WaveFile
+from stegan.audio.wavefile import WaveFile
 
 class TestWaveFile(unittest.TestCase):
     def setUp(self):
@@ -11,7 +10,7 @@ class TestWaveFile(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test__fromFile_whenFileNotExists_raiseException(self):
+    def test_fromFile_whenFileNotExists_raiseException(self):
         self.assertRaises(IOError, WaveFile.fromFile, "/audiofilethatdoesntexist.wav")
     
     # We should test for successful reading of file
