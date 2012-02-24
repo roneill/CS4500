@@ -1,14 +1,19 @@
-from stegan.audio import AudioFile
+import os
+import subprocess
+from wavefile import WaveFile
 
-class MP3File(AudioFile):
+LAME_PATH = "lame"
+
+def decode(path):
+    """ Decode an MP3 File into a WAVE File """
+    newpath = path + ".wav"
+    print "[MP3File] Decoding %s" % path
     
-    def __init__(self):
-        self.headers = {}
-        self.data = bytearray()
+    subprocess.call([LAME_PATH, "--decode", path])
+    print "[MP3File] Writing wave file to %s" % newpath
     
-    @classmethod
-    def fromFile(cls, path):
-        pass
+    return newpath
     
-    def writeToFile(self, path):
-        pass
+def encode(wavepath, resultpath):
+    print "[MP3File] Encoding %s to %s" % (wavepath, resultpath)
+    subprocess.call([LAME_PATH, wavepath, resultpath])
