@@ -1,5 +1,5 @@
 import sys, math
-from numpy import linspace,sin,pi,int16
+from numpy import linspace,sin,pi,int16,fft
 
 from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
@@ -43,7 +43,7 @@ def encode(payload, container):
     payload_size_bits = BitArray(payload_size, size=32)
 
     # generate a tone to place in the file
-    insertTone = tone(440,0.1,amp=-3)
+    insertTone = tone(55,0.01,amp=2)
     tonebytearray = expand16bitsToBytes(insertTone)
 
     tonelen = len(tonebytearray)
@@ -51,12 +51,12 @@ def encode(payload, container):
     # Find a spacing width
     payload_spacing = int(math.floor((len(container.data) - 32) / payload_size_in_bits))
 
-    print "[modify_lsb] encode - payload_spacing = %s" % payload_spacing
-    print "[modify_lsb] encode - payload_size = %s" % payload_size
-    print "[modify_lsb] encode - len(payload.data) = %s" % len(payload.data)
+    print "[tone_insertion] encode - payload_spacing = %s" % payload_spacing
+    print "[tone_insertion] encode - payload_size = %s" % payload_size
+    print "[tone_insertion] encode - len(payload.data) = %s" % len(payload.data)
 
-    print "[modify_lsb] encode - len(payload_size_bits) = %s" % len(payload_size_bits)
-    print "[modify_lsb] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
+    print "[tone_insertion] encode - len(payload_size_bits) = %s" % len(payload_size_bits)
+    print "[tone_insertion] encode - payload_size_bits = %s" % ''.join([str(b) for b in payload_size_bits])
     
     #print "[modify_lsb] bits written"    
 
@@ -86,7 +86,11 @@ def encode(payload, container):
 
                 payload_bit = get_bit(payload.data, paybit_idx)
                 if(payload_bit == 1):
-                    tbyte = tonebytearray[toneidx]
+                    mixedByte = tonebytearray[toneidx] + cbyte
+                    if(mixedByte > 255):
+                        tbyte = 255
+                    else:
+                        tbyte = mixedByte
                     toneidx += 1
                 else:
                     tbyte = cbyte
@@ -95,10 +99,18 @@ def encode(payload, container):
                 paybit_space = 0
             else:
                 if(toneidx == (tonelen - 1)):
-                    tbyte = tonebytearray[toneidx]
+                    mixedByte = tonebytearray[toneidx] + cbyte
+                    if(mixedByte > 255):
+                        tbyte = 255
+                    else:
+                        tbyte = mixedByte
                     toneidx = 0
                 elif(toneidx > 0):
-                    tbyte = tonebytearray[toneidx]
+                    mixedByte = tonebytearray[toneidx] + cbyte
+                    if(mixedByte > 255):
+                        tbyte = 255
+                    else:
+                        tbyte = mixedByte
                     toneidx += 1
                 else:
                     tbyte = cbyte
@@ -125,6 +137,9 @@ def decode(trojan):
     payload_spacing = 0
     paybit_space = 0
     
+    fftOutput = fft.fft(trojan.data)
+        
+
     for tidx, tbyte in enumerate(trojan.data):
         
         # First 32 bytes of the trojan will have the file size of the 
@@ -149,30 +164,17 @@ def decode(trojan):
             #    ''.join([str(b) for b in payload_size_bits])
             #print "[modify_lsb] bits read"
             
-        # Trojan bytes [33, n] will have the payload encoded in their lsbs,
-        # where n is payload_size * 8, where payload_size is the number of 
-        # bytes in payload.
-        elif 33 <= tidx and len(payload_data) < payload_size:
-
-            if paybit_space == payload_spacing:
-                payload_bit = get_lsb(tbyte)
-                
-                paybit_stack.append(payload_bit)
-                
-                paybit_space = 0
-                
-            # We've read enough bits to make a byte. DO IT.
-            if len(paybit_stack) == 8:
-                paybyte = BitArray.from_bits(paybit_stack).to_int()
-                payload_data.append(paybyte)
-                paybit_stack = []
-                
-            paybit_space += 1    
-            
         # There's no more payload data to be read from the trojan, let's break
         else:
             break
+
+    paybit_space = 0
+    print "len of fft is: " + str(len(fftOutput))
+    print "payload spacing is: " + str(payload_spacing)
+    for fidx, fbyte in enumerate(fftOutput):
+        paybit_space += 1
+        if(paybit_space == payload_spacing):
+            print fbyte
+            paybit_space = 0
         
-    print "[modify_lsb] decode - len(payload_data) = %s (result)" % len(payload_data)
-    
     return Payload(bytearray(payload_data))
