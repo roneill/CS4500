@@ -9,7 +9,7 @@ import traceback
 
 from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
-from stegan.steganography import modify_lsb
+from stegan.steganography import modify_lsb, tone_insertion
 
 def parse_args():
     args = {}
@@ -59,7 +59,7 @@ def run_encode(args):
         #stegStrategy = StegStrategy.getStrategy()
         #trojan = stegStrategy.encode(payload, container)
         
-        trojan = modify_lsb.encode(payload, container)
+        trojan = tone_insertion.encode(payload, container)
         trojan.writeToFile(args['trojan'])
         
     except Exception as e:
@@ -74,7 +74,7 @@ def run_decode(args):
     try:
         trojan = WaveFile.fromFile(args['trojan'])
 
-        payload = modify_lsb.decode(trojan)
+        payload = tone_insertion.decode(trojan)
 
         payload.writeToFile(args['payload'])
         
