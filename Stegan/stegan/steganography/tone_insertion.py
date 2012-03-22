@@ -1,5 +1,5 @@
 import sys, math
-from numpy import linspace,sin,pi,int16,fft
+import numpy as np
 
 from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
@@ -8,9 +8,9 @@ from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 
 def tone(freq, len, amp=1, rate=44100):
     """ Creates a tone at a given frequency for the given length. """
-    t = linspace(0, len, len*rate)
-    data = sin(2 * pi * freq * t) * amp
-    return data.astype(int16) # two byte integers
+    t = np.linspace(0, len, len*rate)
+    data = np.sin(2 * pi * freq * t) * amp
+    return data.astype(np.int16) # two byte integers
 
 def convert16bitTo8bit(x):
     ''' convert 16 bit int x into two 8 bit ints, coarse and fine.
@@ -43,7 +43,7 @@ def encode(payload, container):
     payload_size_bits = BitArray(payload_size, size=32)
 
     # generate a tone to place in the file
-    insertTone = tone(55,0.01,amp=2)
+    insertTone = tone(440,0.1,amp=2)
     tonebytearray = expand16bitsToBytes(insertTone)
 
     tonelen = len(tonebytearray)
@@ -91,7 +91,10 @@ def encode(payload, container):
                         tbyte = 255
                     else:
                         tbyte = mixedByte
-                    toneidx += 1
+                    if(toneidx == (tonelen - 1)):
+                        toneidx = 0
+                    else:
+                        toneidx += 1
                 else:
                     tbyte = cbyte
                 
@@ -137,8 +140,7 @@ def decode(trojan):
     payload_spacing = 0
     paybit_space = 0
     
-    fftOutput = fft.fft(trojan.data)
-        
+    toneLength = 882
 
     for tidx, tbyte in enumerate(trojan.data):
         
@@ -168,13 +170,25 @@ def decode(trojan):
         else:
             break
 
-    paybit_space = 0
-    print "len of fft is: " + str(len(fftOutput))
-    print "payload spacing is: " + str(payload_spacing)
-    for fidx, fbyte in enumerate(fftOutput):
-        paybit_space += 1
-        if(paybit_space == payload_spacing):
-            print fbyte
-            paybit_space = 0
+    # Get chunks of the tone size found at each spot as determined by spacing. Then get the fft of them.
+    fftChunks = []
+    for i in range(1, len(trojan.data) / payload_spacing):
+        startIdx = i * payload_spacing
+        endIdx = startIdx + toneLength
+        wavChunk = trojan.data[startIdx:endIdx]
+        fftChunk = np.fft.fft(wavChunk)
+        fftChunks.append(fftChunk)
+
+    freqs = np.fft.fftfreq(toneLength)
+    sampleRate = trojan.header[2]
+
+    # Find the frequencies for each chunk
+    for chunk in fftChunks:
+        freqIdx = np.argmax(np.abs(chunk) ** 2)
+        print "freqIdx = " + str(freqIdx)
+        freq = freqs[freqIdx]
+        print "freq = " + str(freq)
+        freq_in_hertz = abs(freq * sampleRate)
+        print "frequency in hertz is: " + str(freq_in_hertz)
         
     return Payload(bytearray(payload_data))
