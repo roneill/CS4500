@@ -1,4 +1,5 @@
 import sys, math
+import struct
 import numpy as np
 
 from stegan.payload import Payload
@@ -9,7 +10,7 @@ from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 def tone(freq, len, amp=1, rate=44100):
     """ Creates a tone at a given frequency for the given length. """
     t = np.linspace(0, len, len*rate)
-    data = np.sin(2 * pi * freq * t) * amp
+    data = np.sin(2 * np.pi * freq * t) * amp
     return data.astype(np.int16) # two byte integers
 
 def convert16bitTo8bit(x):
@@ -172,23 +173,42 @@ def decode(trojan):
 
     # Get chunks of the tone size found at each spot as determined by spacing. Then get the fft of them.
     fftChunks = []
-    for i in range(1, len(trojan.data) / payload_spacing):
+    for i in range(1, len(trojan.unpacked) / payload_spacing):
         startIdx = i * payload_spacing
         endIdx = startIdx + toneLength
-        wavChunk = trojan.data[startIdx:endIdx]
+        wavChunk = trojan.unpacked[startIdx:endIdx]
+        
         fftChunk = np.fft.fft(wavChunk)
         fftChunks.append(fftChunk)
 
-    freqs = np.fft.fftfreq(toneLength)
     sampleRate = trojan.header[2]
 
     # Find the frequencies for each chunk
     for chunk in fftChunks:
+        freqs = np.fft.fftfreq(len(chunk))
         freqIdx = np.argmax(np.abs(chunk) ** 2)
         print "freqIdx = " + str(freqIdx)
         freq = freqs[freqIdx]
         print "freq = " + str(freq)
         freq_in_hertz = abs(freq * sampleRate)
         print "frequency in hertz is: " + str(freq_in_hertz)
-        
+    
+
+    #DATA_size = len(trojan.unpacked)
+    #frate = trojan.frate()
+    #data = trojan.unpacked
+
+    #w = np.fft.fft(data)
+    #freqs = np.fft.fftfreq(len(w))
+    #print(freqs.min(), freqs.max())
+    
+    #print w
+    #print "=========="
+    #print freqs
+
+    #idx = np.argmax(np.abs(w) * (10 ** 8))
+    #freq = freqs[idx]
+    #freq_in_hertz = abs(freq * frate)
+    #print(freq_in_hertz)
+
     return Payload(bytearray(payload_data))
