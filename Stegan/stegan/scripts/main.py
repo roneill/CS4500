@@ -58,12 +58,9 @@ def run_encode(args):
     
         #stegStrategy = StegStrategy.getStrategy()
         #trojan = stegStrategy.encode(payload, container)
+
         
-<<<<<<< HEAD
-        trojan = test.encode(payload, container)
-=======
-        trojan = tone_insertion.encode(payload, container)
->>>>>>> f72017adb394552debd9ef3379edfb282223b304
+        trojan = fft_encode.encode(payload, container)
         trojan.writeToFile(args['trojan'])
         
     except Exception as e:
@@ -78,11 +75,9 @@ def run_decode(args):
     try:
         trojan = WaveFile.fromFile(args['trojan'])
 
-<<<<<<< HEAD
-        payload = test.decode(trojan)
-=======
-        payload = tone_insertion.decode(trojan)
->>>>>>> f72017adb394552debd9ef3379edfb282223b304
+        payload = fft_encode.decode(trojan)
+        payload = fft_encode.decode(trojan)
+
 
         payload.writeToFile(args['payload'])
         
