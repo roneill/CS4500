@@ -6,7 +6,7 @@ class WaveFile(object):
     
     def __init__(self, header, data):
         self.header = header
-        self.data = bytearray(data)
+        self.data = data
         self.data2 = data
         
         #print "[WaveFile] New WaveFile"
