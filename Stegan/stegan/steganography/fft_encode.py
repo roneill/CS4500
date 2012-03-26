@@ -9,9 +9,9 @@ from stegan.utils.bitarray import BitArray
 from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 
 def tone(freq):
-    data_size=2000
+    data_size=1500
     sampling_rate = 44100.0
-    amp=40000.0
+    amp=60000.0
     
     data=[math.sin(2*math.pi*freq*(x/sampling_rate))
           for x in range(data_size)]
@@ -38,13 +38,26 @@ def tone(freq):
     
     return data_bytes
 
+def create_tone_bit_map():
+    tone_bit_map = []
+
+    one = tone(60)
+    zero = tone(15)
+    
+    tone_bit_map.append(one)
+    tone_bit_map.append(zero)
+
+    return tone_bit_map
+
 def create_tone_byte_map():
     tone_byte_map = []
 
-    tone1 = tone(40)
+    tone1 = tone(550)
+    tone2 = tone(20)
     
     for i in range(256):
-        tone_byte_map.append(tone1)
+        tone_byte_map.append(tone2)
+        
 
     return tone_byte_map
 
@@ -55,9 +68,7 @@ def mix_chunks(c1, c2):
 
         if result > 32767:
             result = 32767
-            print "Upper limit"
         elif result < -32768:
-            print "Lower limit"
             result = -32768
 
         mixed_chunk.append(result)
@@ -103,8 +114,13 @@ def encode(payload, container):
     
     trojan_audio_data = []
     tone_byte_map = create_tone_byte_map()
+
+    tone_bit_map = create_tone_bit_map()
+    
+    payload_data = [get_bit(payload.data, i) for i in range(len(payload.data) * 8)]
     
     payload_bytes_length = len(payload.data)
+    payload_bits_length = len(payload_data)
     payload_spacing = 2
     tone_length = len(tone_byte_map[0])
 
@@ -118,14 +134,28 @@ def encode(payload, container):
     tdata=np.array(tdata)
     
     chunks = chunk_data(tdata, tone_length)
-
+    
     paybyte_idx = 0
+    paybit_idx = 0
     payload_spacing_idx = 0
     
     encoded_chunks = []
 
     print str(len(chunks))
-    
+
+    for chunk in chunks:
+        if paybit_idx < payload_bits_length: # and payload_spacing_idx == payload_spacing:
+            payload_bit = payload_data[paybit_idx]
+            tone_byte_array = tone_bit_map[payload_bit]
+             
+            encoded_chunks.append(mix_chunks(chunk, tone_byte_array))
+            payload_spacing_idx = 0
+            paybit_idx +=1
+        else:
+            encoded_chunks.append(chunk)
+            payload_spacing_idx += 1
+
+    """
     for chunk in chunks:
         if paybyte_idx < payload_bytes_length: # and payload_spacing_idx == payload_spacing:
             payload_byte = payload.data[paybyte_idx]
@@ -137,7 +167,8 @@ def encode(payload, container):
         else:
             encoded_chunks.append(chunk)
             payload_spacing_idx += 1
-
+            """
+            
     #**************************************************************
     fft_chunks = []
     for chunk in encoded_chunks:
@@ -152,7 +183,7 @@ def encode(payload, container):
         freq = freqs[freqIdx]
         freq_in_hertz = abs(freq * sampleRate)
         
-        print "frequency in hertz is: " + str(freq_in_hertz)
+        #print "frequency in hertz is: " + str(freq_in_hertz)
      
      
     #**************************************************************
@@ -184,7 +215,8 @@ def decode(trojan):
     tdata=np.array(tdata)
 
     print "Size of audio data: " + str(trojan.header[1] * trojan.header[3])
-    
+
+    """
     print "******************************************"
     w = np.fft.fft(tdata)
     freqs = np.fft.fftfreq(len(w))
@@ -201,11 +233,11 @@ def decode(trojan):
     print(freq_in_hertz)
     # 439.8975
     print "******************************************"
-
+    """
     
     startIdx = 0
-    for i in range(len(tdata) / 40000):
-        endIdx = startIdx + 40000
+    for i in range(len(tdata) / 1500):
+        endIdx = startIdx + 1500
         chunk = tdata[startIdx:endIdx]
         chunk = np.array(chunk)
         chunks.append(chunk)
@@ -228,18 +260,35 @@ def decode(trojan):
         fft_chunk = np.fft.fft(chunk)
         fft_chunks.append(fft_chunk)
         
-    freqs = np.fft.fftfreq(40000)
+    freqs = np.fft.fftfreq(1500)
     sampleRate = trojan.header[2]
+
+    payload_bits = []
     
-    for chunk in fft_chunks:
+    for i,  chunk in enumerate(fft_chunks):
         freqIdx = np.argmax(np.abs(chunk)**2)
-        f = np.sort
         freq = freqs[freqIdx]
         freq_in_hertz = abs(freq * sampleRate)
         
-        print "frequency in hertz is: " + str(freq_in_hertz)
+        if i < 580 * 8:
+            if freq_in_hertz == 0.0:
+                payload_bits.append(1)
+            else:
+                payload_bits.append(0)
         
-    
-    payload_bytes = [124]
-    
+        print "frequency in hertz is: " + str(freq_in_hertz)
+        print "Amplitude is: " + str(freqIdx)
+
+    payload_bytes = []
+        
+    startIdx = 0
+    for i in range(len(payload_bits)):
+        endIdx = startIdx + 8
+        s = payload_bits[startIdx:endIdx]
+        if len(s) == 8: 
+            nByte = BitArray.from_bits(s).to_int()
+            payload_bytes.append(nByte)
+        startIdx = endIdx
+
+        
     return Payload(bytearray(payload_bytes))
