@@ -76,8 +76,6 @@ def run_decode(args):
         trojan = WaveFile.fromFile(args['trojan'])
 
         payload = fft_encode.decode(trojan)
-        payload = fft_encode.decode(trojan)
-
 
         payload.writeToFile(args['payload'])
         
