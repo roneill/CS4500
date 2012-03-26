@@ -267,10 +267,9 @@ def decode(trojan):
     
     for i,  chunk in enumerate(fft_chunks):
         freqIdx = np.argmax(np.abs(chunk)**2)
-        f = np.sort
         freq = freqs[freqIdx]
         freq_in_hertz = abs(freq * sampleRate)
-
+        
         if i < 580 * 8:
             if freq_in_hertz == 0.0:
                 payload_bits.append(1)
@@ -278,6 +277,7 @@ def decode(trojan):
                 payload_bits.append(0)
         
         print "frequency in hertz is: " + str(freq_in_hertz)
+        print "Amplitude is: " + str(freqIdx)
 
     payload_bytes = []
         
