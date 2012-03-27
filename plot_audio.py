@@ -96,9 +96,13 @@ class WaveFile(object):
     
     def sampwidth(self):
         return self.headers[1]
+
+    def framerate(self):
+        return self.headers[2]
     
     def nframes(self):
         return self.headers[3]
+
     
     def freqs(self, channel=0):
         """ Returns a frequency analysis on the samples contained in this
@@ -110,39 +114,37 @@ class WaveFile(object):
         the first element is a frequency in hertz and the second element
         is the power/amplitude of that frequency.
         """
+        
         print "[freqs] Calculating frequencies"
         
-        print 1
-        signal = [x for x in self.channel_data[channel] if x != 0]
+        #signal = []
+        #for idx, x in enumerate(self.channel_data[channel]):
+        #    if (idx % samplerate) == 0 and x != 0:
+        #        signal.append(x)
+        # signal = [x for x in self.channel_data[channel] if x != 0]
         
-        print 2
-        spectrum = abs(np.fft.fft(signal))
-        
-        print 3
-        freqs = np.fft.fftfreq(len(spectrum), d=1/33.34)
-        
-        return zip(freqs, spectrum)
-        
-        #print 4
-        #freq_idxs = (np.abs(fourier) ** 2)
+        signal = [f for f in self.frames if f != 0]
+        frame_rate = self.framerate()
 
-        #print 5
-        #result = []
+        spectrum = abs(np.fft.fft(signal))
+        freqs = np.fft.fftfreq(len(spectrum))
+        freqs_in_hertz = [abs(fft_freq * frame_rate) for fft_freq in freqs]
         
-        #for fidx in freq_idxs:
-        #    print "fidx = %s" % fidx
-        #    amp = fidx
-        #    hertz = abs(freq[fidx] * samplerate)
-        #    result.append((amp, hertz))
+        print(freqs.min(), freqs.max())
+        idx = np.argmax(np.abs(spectrum) ** 2)
+        freq = freqs[idx]
+        freq_in_hertz = abs(freq * frame_rate)
+        print(freq_in_hertz)
         
-        #print 6
-    
-        #return result
+        return zip(freqs_in_hertz, spectrum)
 
 
 if __name__ == "__main__":
     audio = WaveFile.fromFile("Stegan/test_audio/Pachelbels_Canon_Excerpt.wav")
-    window = audio.window(2000000, 600000)
+    window = audio.window(200000, 1200000)
+    
+    #plot.channels(zip(*audio.channel_data))
+    #plot.frequency_distribution(audio.freqs())
     
     plot.channels(zip(*window.channel_data))
     plot.frequency_distribution(window.freqs())
