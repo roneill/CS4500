@@ -37,26 +37,12 @@ def tone(freq):
     
     return data_bytes
 
-def create_tone_bit_map():
-    tone_bit_map = []
-
-    zero = tone(550)
-    one = tone(880)
-    
-    tone_bit_map.append(zero)
-    tone_bit_map.append(one)
-
-    return tone_bit_map
-
 def create_tone_byte_map():
     tone_byte_map = []
-
-    tone1 = tone(550)
-    tone2 = tone(20)
     
-    for i in range(128):
-        tone_byte_map.append(tone(15000.0 + i * 30))
-
+    for i in range(256):
+        tone_byte_map.append(tone(15000.0 + i * 2))
+    
     """
     for i in range(128):
         tone_byte_map.append(tone(0 + i))
@@ -92,14 +78,6 @@ def chunk_data(data, tone_length):
 
     return chunks
 
-def test_chunk_data():
-    data = [1,2,3,4,5,6,7,8, 9]
-    chunks = [[1,2], [3,4], [5, 6], [7,8]]
-
-    print chunk_data(data, 2)
-    
-    return chunk_data(data, 2) == chunks
-
 def unchunk(chunks):
     unchunked_bytes = []
 
@@ -113,30 +91,17 @@ def encode(payload, container):
     """ Encode a payload inside an audio container using the tone insertion
     algorithm. Returns a Trojan AudioFile with the payload inside it.
     """
-
-    if not test_chunk_data():
-        print "CHUNK DATA FAILED"
     
     trojan_audio_data = []
     tone_byte_map = create_tone_byte_map()
-
-    tone_bit_map = create_tone_bit_map()
-    
-    payload_data = [0,1,0,1,1,1,0,1]
-
-    #[get_bit(payload.data, i) for i in range(len(payload.data) * 8)]
     
     payload_bytes_length = len(payload.data)
-    payload_bits_length = len(payload_data)
     payload_spacing = 2
-    tone_length = len(tone_bit_map[0])
+    tone_length = len(tone_byte_map[0])
 
     tdata = struct.unpack('{n}h'.format(n=container.header[1] *
                                         container.header[3]),
                           str(container.data2))
-    print "Size of audio data: " + str(container.header[1] * container.header[3])
-    
-    print "Length of data" + str(len(str(container.data2)))
     
     tdata=np.array(tdata)
     
@@ -149,20 +114,6 @@ def encode(payload, container):
     encoded_chunks = []
 
     print str(len(chunks))
-
-    """
-    for chunk in chunks:
-        if paybit_idx < payload_bits_length: # and payload_spacing_idx == payload_spacing:
-            payload_bit = payload_data[paybit_idx]
-            tone_byte_array = tone_bit_map[payload_bit]
-             
-            encoded_chunks.append(mix_chunks(chunk, tone_byte_array))
-            payload_spacing_idx = 0
-            paybit_idx +=1
-        else:
-            encoded_chunks.append(chunk)
-            payload_spacing_idx += 1
-    """
     
     for chunk in chunks:
         if paybyte_idx < payload_bytes_length: # and payload_spacing_idx == payload_spacing:
@@ -176,32 +127,13 @@ def encode(payload, container):
             encoded_chunks.append(chunk)
             payload_spacing_idx += 1
             
-    #**************************************************************
-    fft_chunks = []
-    for chunk in encoded_chunks:
-        fft_chunk = np.fft.fft(chunk)
-        fft_chunks.append(fft_chunk)
-        
-    freqs = np.fft.fftfreq(tone_length)
-    sampleRate = container.header[2]
-     
-    for chunk in fft_chunks:
-        freqIdx = np.argmax(np.abs(chunk)**2)
-        freq = freqs[freqIdx]
-        freq_in_hertz = abs(freq * sampleRate)
-        
-        #print "frequency in hertz is: " + str(freq_in_hertz)
-     
-     
-    #**************************************************************
-            
     unchunked_bytes = unchunk(encoded_chunks)
 
     print "Mixed chunks: " + str(paybyte_idx)
     
     thing = ''.join(struct.pack('h', v) for v in unchunked_bytes)
 
-    print "Length of data" + str(len(str(thing)))
+    print "Length of data " + str(len(str(thing)))
     
     return WaveFile(container.header, thing)
 
@@ -232,30 +164,6 @@ def get_index(freqs, tone):
             currTolerance = .000001
 
     return toneIdx
-    
-    """
-    while(key == None):
-        prec -= 1
-        if prec == 7:
-            rounded_tone = round(tone,7)#float('%.7f' % tone)
-        elif prec == 6:      
-            rounded_tone = round(tone,6)#float('%.6f' % tone)
-        elif prec == 5:      
-            rounded_tone = round(tone,5)#float('%.5f' % tone)
-        elif prec == 4:      
-            rounded_tone = round(tone,4)#float('%.4f' % tone)
-        elif prec == 3:      
-            rounded_tone = round(tone,3)#float('%.3f' % tone)
-        elif prec == 2:      
-            rounded_tone = round(tone,2)#float('%.2f' % tone)
-        elif prec == 1:      
-            rounded_tone = round(tone,1)#float('%.1f' % tone)
-        else:
-            print i
-            raise Exception
-                
-        key = freqs.get(rounded_tone)
-        """
 
 def decode(trojan):
     """ Decode a payload from a trojan AudioFile that has been encoded 
@@ -300,31 +208,6 @@ def decode(trojan):
 
     for i, freq in enumerate(freqs):
         freqsd[freq] = i
-    
-    """
-    for i, freq in enumerate(freqs):
-        for j in reversed(range(8)):
-            rounded_freq = round(freq, j)
-            freqsd[rounded_freq] = i
-
-    freqsd2 = {}
-            
-    for i, freq in enumerate(freqs):
-        truncated_freq = float('%.8f' % freq)
-        freqsd2[truncated_freq] = i
-        truncated_freq = float('%.7f' % freq)
-        freqsd2[truncated_freq] = i
-        truncated_freq = float('%.6f' % freq)
-        freqsd2[truncated_freq] = i
-        truncated_freq = float('%.5f' % freq)
-        freqsd2[truncated_freq] = i
-        truncated_freq = float('%.4f' % freq)
-        freqsd2[truncated_freq] = i
-        truncated_freq = float('%.3f' % freq)
-        freqsd2[truncated_freq] = i
-        truncated_freq = float('%.2f' % freq)
-        freqsd2[truncated_freq] = i
-        """
         
     payload_bits = []
 
@@ -333,8 +216,8 @@ def decode(trojan):
     tones = []
 
     """
-    for i in range(128):
-        tone = 15000.0 + i * 30
+    for i in range(256):
+        tone = 15000.0 + i * 2
         tones.append(tone / sampleRate)
         
     toneIndices = []
@@ -343,108 +226,18 @@ def decode(trojan):
 
         index = get_index(freqs, tone)
 
-        #print index
+        print index
         toneIndices.append(index)
         """
-
-    toneIndices = [13605, 13633, 13660, 13687, 13714, 13742, 13769, 13796, 13823, 13850, 13878, 13905, 13932, 13959, 13986, 14014, 14041, 14068, 14095, 14123, 14150, 14177, 14204, 14231, 14259, 14286, 14313, 14340, 14367, 14395, 14422, 14449, 14476, 14503, 14531, 14558, 14585, 14612, 14640, 14667, 14694, 14721, 14748, 14776, 14803, 14830, 14857, 14884, 14912, 14939, 14966, 14993, 15021, 15048, 15075, 15102, 15129, 15157, 15184, 15211, 15238, 15265, 15293, 15320, 15347, 15374, 15401, 15429, 15456, 15483, 15510, 15538, 15565, 15592, 15619, 15646, 15674, 15701, 15728, 15755, 15782, 15810, 15837, 15864, 15891, 15919, 15946, 15973, 16000, 16027, 16055, 16082, 16109, 16136, 16163, 16191, 16218, 16245, 16272, 16299, 16327, 16354, 16381, 16408, 16436, 16463, 16490, 16517, 16544, 16572, 16599, 16626, 16653, 16680, 16708, 16735, 16762, 16789, 16816, 16844, 16871, 16898, 16925, 16953, 16980, 17007, 17034, 17061]
-    
-    for toneIdx in toneIndices:
-        print toneIdx
         
-    for i,  chunk in enumerate(fft_chunks):
+    #toneIndices = [13605, 13610, 13615, 13619, 13624, 13628, 13633, 13637, 13642, 13646, 13651, 13655, 13660, 13664, 13669, 13674, 13678, 13683, 13687, 13692, 13696, 13701, 13705, 13710, 13714, 13719, 13723, 13728, 13732, 13737, 13742, 13746, 13751, 13755, 13760, 13764, 13769, 13773, 13778, 13782, 13787, 13791, 13796, 13801, 13805, 13810, 13814, 13819, 13823, 13828, 13832, 13837, 13841, 13846, 13850, 13855, 13859, 13864, 13869, 13873, 13878, 13882, 13887, 13891, 13896, 13900, 13905, 13909, 13914, 13918, 13923, 13927, 13932, 13937, 13941, 13946, 13950, 13955, 13959, 13964, 13968, 13973, 13977, 13982, 13986, 13991, 13996, 14000, 14005, 14009, 14014, 14018, 14023, 14027, 14032, 14036, 14041, 14045, 14050, 14054, 14059, 14064, 14068, 14073, 14077, 14082, 14086, 14091, 14095, 14100, 14104, 14109, 14113, 14118, 14123, 14127, 14132, 14136, 14141, 14145, 14150, 14154, 14159, 14163, 14168, 14172, 14177, 14181, 14186, 14191, 14195, 14200, 14204, 14209, 14213, 14218, 14222, 14227, 14231, 14236, 14240, 14245, 14250, 14254, 14259, 14263, 14268, 14272, 14277, 14281, 14286, 14290, 14295, 14299, 14304, 14308, 14313, 14318, 14322, 14327, 14331, 14336, 14340, 14345, 14349, 14354, 14358, 14363, 14367, 14372, 14376, 14381, 14386, 14390, 14395, 14399, 14404, 14408, 14413, 14417, 14422, 14426, 14431, 14435, 14440, 14445, 14449, 14454, 14458, 14463, 14467, 14472, 14476, 14481, 14485, 14490, 14494, 14499, 14503, 14508, 14513, 14517, 14522, 14526, 14531, 14535, 14540, 14544, 14549, 14553, 14558, 14562, 14567, 14572, 14576, 14581, 14585, 14590, 14594, 14599, 14603, 14608, 14612, 14617, 14621, 14626, 14630, 14635, 14640, 14644, 14649, 14653, 14658, 14662, 14667, 14671, 14676, 14680, 14685, 14689, 14694, 14699, 14703, 14708, 14712, 14717, 14721, 14726, 14730, 14735, 14739, 14744, 14748, 14753, 14757, 14762 ]
 
-        if i == 52:
+    toneIndices = [13605, 13607, 13609, 13611, 13613, 13615, 13616, 13618, 13620, 13622, 13624, 13625, 13627, 13629, 13631, 13633, 13635, 13636, 13638, 13640, 13642, 13644, 13645, 13647, 13649, 13651, 13653, 13654, 13656, 13658, 13660, 13662, 13664, 13665, 13667, 13669, 13671, 13673, 13674, 13676, 13678, 13680, 13682, 13683, 13685, 13687, 13689, 13691, 13693, 13694, 13696, 13698, 13700, 13702, 13703, 13705, 13707, 13709, 13711, 13713, 13714, 13716, 13718, 13720, 13722, 13723, 13725, 13727, 13729, 13731, 13732, 13734, 13736, 13738, 13740, 13742, 13743, 13745, 13747, 13749, 13751, 13752, 13754, 13756, 13758, 13760, 13762, 13763, 13765, 13767, 13769, 13771, 13772, 13774, 13776, 13778, 13780, 13781, 13783, 13785, 13787, 13789, 13791, 13792, 13794, 13796, 13798, 13800, 13801, 13803, 13805, 13807, 13809, 13810, 13812, 13814, 13816, 13818, 13820, 13821, 13823, 13825, 13827, 13829, 13830, 13832, 13834, 13836, 13838, 13840, 13841, 13843, 13845, 13847, 13849, 13850, 13852, 13854, 13856, 13858, 13859, 13861, 13863, 13865, 13867, 13869, 13870, 13872, 13874, 13876, 13878, 13879, 13881, 13883, 13885, 13887, 13888, 13890, 13892, 13894, 13896, 13898, 13899, 13901, 13903, 13905, 13907, 13908, 13910, 13912, 13914, 13916, 13918, 13919, 13921, 13923, 13925, 13927, 13928, 13930, 13932, 13934, 13936, 13937, 13939, 13941, 13943, 13945, 13947, 13948, 13950, 13952, 13954, 13956, 13957, 13959, 13961, 13963, 13965, 13966, 13968, 13970, 13972, 13974, 13976, 13977, 13979, 13981, 13983, 13985, 13986, 13988, 13990, 13992, 13994, 13996, 13997, 13999, 14001, 14003, 14005, 14006, 14008, 14010, 14012, 14014, 14015, 14017, 14019, 14021, 14023, 14025, 14026, 14028, 14030, 14032, 14034, 14035, 14037, 14039, 14041, 14043, 14045, 14046, 14048, 14050, 14052, 14054, 14055, 14057, 14059, 14061, 14063, 14064, 14066, 14068 ]
+        
+    for i, chunk in enumerate(fft_chunks):
+
+        if i == 83:
             break
-
-        """
-        for i in range(128):
-            tone = 0.0 + i
-            tones.append(tone / sampleRate)
-            
-        for i in range(128, 256):
-            tone = 16000.0 + i
-            tones.append(tone / sampleRate)
-        """
-        
-        """
-        # get the index of the frequency bin
-        for i, tone in enumerate(tones):
-            
-            rounded_tone = round(tone, 8)#float('%.8f' % tone)
-            key = freqsd.get(rounded_tone)
-            prec = 8
-
-            while(key == None):
-                prec -= 1
-                if prec == 7:
-                    rounded_tone = round(tone,7)#float('%.7f' % tone)
-                elif prec == 6:      
-                    rounded_tone = round(tone,6)#float('%.6f' % tone)
-                elif prec == 5:      
-                    rounded_tone = round(tone,5)#float('%.5f' % tone)
-                elif prec == 4:      
-                    rounded_tone = round(tone,4)#float('%.4f' % tone)
-                elif prec == 3:      
-                    rounded_tone = round(tone,3)#float('%.3f' % tone)
-                elif prec == 2:      
-                    rounded_tone = round(tone,2)#float('%.2f' % tone)
-                elif prec == 1:      
-                    rounded_tone = round(tone,1)#float('%.1f' % tone)
-                else:
-                    print i
-                    raise Exception
-                
-                key = freqsd.get(rounded_tone)
-
-            truncated_tone = float('%.8f' % tone)
-            key2 = freqsd2.get(truncated_tone)
-            prec = 8
-
-            while(key2 == None):
-                prec -= 1
-                if prec == 7:
-                    truncated_tone = float('%.7f' % tone)
-                elif prec == 6:      
-                    truncated_tone = float('%.6f' % tone)
-                elif prec == 5:      
-                    truncated_tone = float('%.5f' % tone)
-                elif prec == 4:      
-                    truncated_tone = float('%.4f' % tone)
-                elif prec == 3:      
-                    truncated_tone = float('%.3f' % tone)
-                elif prec == 2:      
-                    truncated_tone = float('%.2f' % tone)
-                elif prec == 1:      
-                    truncated_tone = float('%.1f' % tone)
-                else:
-                    print i
-                    raise Exception
-                
-                key2 = freqsd2.get(truncated_tone)
-
-                #if key != None:
-                 #   print "Found key: " + str(truncated_tone)
-
-            if rounded_tone != truncated_tone:
-                print "Found rounded_tone: " + str(rounded_tone) + " and truncated tone: " + str(truncated_tone)
-            correct_tone = min([rounded_tone, truncated_tone])
-                
-            toneIndices.append(freqsd[correct_tone])
-
-            """
-        """
-            for i, freq in enumerate(freqs):
-                if approx_equal(freq, tone, .0001): #.0001
-                    toneIdx = i
-                    toneIndices.append(toneIdx)
-                    print "Tone was: " + str(tone) + "Freq was: " + str(freq)
-                    break
-                    """
-            
-        if len(toneIndices) < 128:
-            print "There were" + str(len(toneIndices)) + " indices"
-            raise Exception
 
         processed_values = np.abs(chunk)**2
         
@@ -458,48 +251,6 @@ def decode(trojan):
                 payload_bytes.append(i)
                 
                 break
-        
-        """
-        zeroIdx = 0
-        for i, freq in enumerate(freqs):
-            #print freq
-            if approx_equal(freq, zero, .001): #.0001
-                print "The freq bin was:" + str(freq)
-                zeroIdx = i
-                break
-            
-        oneIdx = 0
-        for i, freq in enumerate(freqs):
-            if approx_equal(freq, one, .001):
-                print "The freq bin was:" + str(freq)
-                oneIdx = i
-                break
-        
-        processed_values = np.abs(chunk)**2
-
-        zero_value = processed_values[zeroIdx]
-        one_value = processed_values[oneIdx]
-        
-        if zero_value > one_value: 
-            print "Found a zero"
-        else:
-            print "Found a one"
-        """
-        
-        """
-        freqIdx = np.argmax(np.abs(chunk)**2)
-        freq = freqs[freqIdx]
-        freq_in_hertz = abs(freq * sampleRate)
-        
-        if i < 580 * 8:
-            if freq_in_hertz == 0.0:
-                payload_bits.append(1)
-            else:
-                payload_bits.append(0)
-        
-        print "frequency in hertz is: " + str(freq_in_hertz)
-        print "Amplitude is: " + str(freqIdx)
-        """
         
     startIdx = 0
     for i in range(len(payload_bits)):
