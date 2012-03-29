@@ -8,64 +8,6 @@ from stegan.audio.wavefile import WaveFile
 from stegan.utils.bitarray import BitArray
 from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 
-def tone(freq):
-    data_size=40000
-    sampling_rate = 44100.0
-    amp=100.0
-    
-    data=[math.sin(2*math.pi*freq*(x/sampling_rate))
-          for x in range(data_size)]
-
-    amps = []
-
-    fadeIn = .2 * data_size
-    fadeOut = .8 * data_size
-    
-    for i in range(data_size):
-        if i <= fadeIn:
-            amps.append(amp * (i / fadeIn))
-        elif i > fadeIn and i <= fadeOut:
-            amps.append(amp)
-        else:
-            amps.append(amp * ((data_size - i) / (data_size - fadeOut)))
-
-    data_bytes = []
-        
-    for v, a in zip(data, amps):
-        b = int(v*a/2)
-        data_bytes.append(b)
-    
-    return data_bytes
-
-def create_tone_byte_map():
-    tone_byte_map = []
-    
-    for i in range(256):
-        tone_byte_map.append(tone(15000.0 + i * 2))
-    
-    """
-    for i in range(128):
-        tone_byte_map.append(tone(0 + i))
-
-    for i in range(128, 256):
-        tone_byte_map.append(tone(16000 + i))
-    """
-    return tone_byte_map
-
-def mix_chunks(c1, c2):
-    mixed_chunk = []
-    for b1, b2 in zip(c1, c2):
-        result = b1 + b2
-
-        if result > 32767:
-            result = 32767
-        elif result < -32768:
-            result = -32768
-
-        mixed_chunk.append(result)
-        
-    return mixed_chunk
-
 def chunk_data(data, tone_length):
     chunks = []
     
@@ -83,9 +25,23 @@ def unchunk(chunks):
 
     for chunk in chunks:
         for byte in chunk:
+            if byte > 32767:
+                byte = 32767
+            elif byte < -32768:
+                byte = -32768
+            
             unchunked_bytes.append(byte)
     
     return unchunked_bytes
+
+def unpack_data(container):
+    tdata = struct.unpack('{n}h'.format(n=container.header[1] *
+                                        container.header[3]),
+                          str(container.data2))
+
+    tdata = np.array(tdata)
+
+    return tdata
 
 def encode(payload, container):
     """ Encode a payload inside an audio container using the tone insertion
@@ -93,173 +49,86 @@ def encode(payload, container):
     """
     
     trojan_audio_data = []
-    tone_byte_map = create_tone_byte_map()
     
     payload_bytes_length = len(payload.data)
-    payload_spacing = 2
-    tone_length = len(tone_byte_map[0])
 
-    tdata = struct.unpack('{n}h'.format(n=container.header[1] *
-                                        container.header[3]),
-                          str(container.data2))
+    unpacked_data = unpack_data(container)
     
-    tdata=np.array(tdata)
-    
-    chunks = chunk_data(tdata, tone_length)
+    chunks = chunk_data(unpacked_data, 44100)
     
     paybyte_idx = 0
-    paybit_idx = 0
-    payload_spacing_idx = 0
     
     encoded_chunks = []
 
-    print str(len(chunks))
-    
+    power_values = [393945810000.0, 539899162295.0, 612490081873.0, 623798167033.0, 505067660292.0, 361949695918.0, 479917644226.0, 592645741251.0, 613193537214.0, 566291394650.0, 406469417788.0, 433022069057.0, 548465946717.0, 621976251211.0, 598165832472.0, 469530365217.0, 320203171492.0, 515812421814.0, 597243245691.0, 606041667138.0, 524900334333.0, 372851824767.0, 466001023877.0, 575427054677.0, 617654823640.0, 566633194218.0, 426031074004.0, 408522222390.0, 548602199955.0, 612458930005.0, 603288157365.0, 490963349503.0, 335511069896.0, 509002808652.0, 605468066445.0, 615909169885.0, 538706915633.0, 398553706537.0, 454102429424.0, 576141236855.0, 624099015314.0, 573250763459.0, 452714820050.0, 383521941353.0, 526329634310.0, 593786434608.0, 593731642022.0, 511678063342.0, 363470129089.0, 486219618941.0, 581182725897.0, 619258451746.0, 560501967647.0, 425645666625.0, 426289317542.0, 567377659249.0, 610549316447.0, 575846347879.0, 474935295445.0, 320760712795.0, 512507097581.0, 616167075764.0, 608265625430.0, 523867184337.0, 382540699342.0, 464740229704.0, 587702154067.0, 616414169436.0, 565286880211.0, 451625434586.0, 406854040108.0, 547098613182.0, 612228702355.0, 592176096696.0, 487517244239.0, 341367730935.0, 489163601483.0, 590611774559.0, 608718248863.0, 545689968453.0, 406311232802.0, 437102241530.0, 568207164415.0, 611706735530.0, 580287024674.0, 458947465878.0, 302787301158.0, 541300058384.0, 606156219477.0, 600330956834.0, 523992784077.0, 359377703226.0, 488028543242.0, 587842031657.0, 622820200739.0, 548786817565.0, 433998788194.0, 422695413442.0, 563433953555.0, 615161749900.0, 591555669456.0, 481574652130.0, 322588738071.0, 505771170968.0, 612922411503.0, 610928284648.0, 522873984780.0, 387978774516.0, 465856949090.0, 584351863329.0, 619738421525.0, 572438949051.0, 438093400086.0, 406873432084.0, 553700513198.0, 627265425674.0, 598351838465.0, 501698344157.0, 348888581513.0, 489832622389.0, 595998622867.0, 600808109961.0, 532024491860.0, 402538896590.0, 437223665704.0, 560395328334.0, 611109531994.0, 574988005516.0, 450814697755.0, 306368594689.0, 519833063617.0, 606323553240.0, 605110255815.0, 501717261844.0, 362842144970.0, 485666150428.0, 576217512688.0, 612744042744.0, 548025303138.0, 425625353143.0, 415003100636.0, 554811040264.0, 619901933708.0, 590905761433.0, 485784292474.0, 324399676025.0, 511265609974.0, 599672552642.0, 606541839460.0, 529791846441.0, 388771104145.0, 456571176813.0, 582479518610.0, 624416268977.0, 575057267852.0, 448524311871.0, 396706989583.0, 546469396531.0, 608573797798.0, 596241514140.0, 489540289385.0, 347777295553.0, 496716412457.0, 596090468696.0, 619166859986.0, 544052728155.0, 402577928355.0, 440805427396.0, 565668463786.0, 606371434317.0, 577066811060.0, 465431200290.0, 310248714171.0, 530308815987.0, 607283054718.0, 613191840897.0, 516416577284.0, 367268412733.0, 465600145957.0, 589125363107.0, 626306482378.0, 565110176673.0, 423699558653.0, 419268586197.0, 553057513960.0, 620606775563.0, 601912661684.0, 488059121251.0, 339542450495.0, 518934959011.0, 603315301326.0, 613723982935.0, 536711726245.0, 388049746321.0, 454898777448.0, 574436067936.0, 615096268429.0, 580414377667.0, 451889776603.0, 402620158621.0, 532159127417.0, 613220172326.0, 599221087484.0, 499887794551.0, 361469790805.0, 479468507683.0, 604024703931.0, 622095176473.0, 549108464335.0, 415202158244.0, 428790809197.0, 566077619470.0, 624001627464.0, 579113111310.0, 485322347609.0, 308043537042.0, 508352491674.0, 615938352114.0, 602499662766.0, 503829031188.0, 372403288163.0, 463142942397.0, 580110189275.0, 622539341604.0, 572093385332.0, 432257377635.0, 410347714696.0, 536729358520.0, 613955738634.0, 594062040019.0, 484475916121.0, 331223222463.0, 502530038656.0, 604469798364.0, 609376428173.0, 544054777528.0, 386539586047.0, 444607954509.0, 573944281333.0, 624079036767.0, 566940942005.0, 457583142285.0, 292937487251.0, 537162769694.0, 597780676764.0, 595366660591.0, 513946407435.0, 354587313693.0, 487513284963.0, 586131866717.0, 614435812054.0, 551115703006.0, 418500708419.0, 430583864031.0, 567126145372.0, 618264961152.0 ]
+
+    toneIndices = [i for i in range(15000, 15256)]
+
     for chunk in chunks:
-        if paybyte_idx < payload_bytes_length: # and payload_spacing_idx == payload_spacing:
+        if paybyte_idx < payload_bytes_length:
             payload_byte = payload.data[paybyte_idx]
-            tone_byte_array = tone_byte_map[payload_byte]
-             
-            encoded_chunks.append(mix_chunks(chunk, tone_byte_array))
-            payload_spacing_idx = 0
+            
+            fft_chunk = np.fft.fft(chunk)
+            processed_values = np.abs(chunk)**2
+
+            index = toneIndices[payload_byte]
+            power_value = power_values[payload_byte]
+            fft_chunk[index] = math.sqrt(power_value)
+
+            encoded_chunk = np.fft.ifft(fft_chunk)
+            encoded_chunks.append(encoded_chunk)
+
             paybyte_idx +=1
         else:
             encoded_chunks.append(chunk)
-            payload_spacing_idx += 1
             
     unchunked_bytes = unchunk(encoded_chunks)
 
     print "Mixed chunks: " + str(paybyte_idx)
     
     thing = ''.join(struct.pack('h', v) for v in unchunked_bytes)
-
-    print "Length of data " + str(len(str(thing)))
     
     return WaveFile(container.header, thing)
-
-def approx_equal(a, b, tol):
-    return (abs(a-b) / (abs(a)+abs(b))/2) < tol
-
-def get_index(freqs, tone):
-    toneIdx = -1
-    currTolerance = .1
-    for i, freq in enumerate(freqs):
-        if approx_equal(freq, tone, .1) and .1 <= currTolerance: 
-            toneIdx = i
-            currTolerance = .1
-        if approx_equal(freq, tone, .01) and .01 <= currTolerance: 
-            toneIdx = i
-            currTolerance = .01
-        if approx_equal(freq, tone, .001) and .001 <= currTolerance: 
-            toneIdx = i
-            currTolerance = .001
-        if approx_equal(freq, tone, .0001) and .0001 <= currTolerance:
-            toneIdx = i
-            currTolerance = .0001
-        if approx_equal(freq, tone, .00001) and .00001 <= currTolerance: 
-            toneIdx = i
-            currTolerance = .00001
-        if approx_equal(freq, tone, .000001) and .000001 <= currTolerance: 
-            toneIdx = i
-            currTolerance = .000001
-
-    return toneIdx
 
 def decode(trojan):
     """ Decode a payload from a trojan AudioFile that has been encoded 
     using the Modify LSB algorithm. Returns a Payload.
     """
-    payload_data = []
-
-    payload_spacing = 0
-    paybit_space = 0
     
-    toneLength = 882
-
-    chunks = []
-    
-    tdata = struct.unpack('{n}h'.format(n=trojan.header[1] * trojan.header[3]), str(trojan.data))
+    tdata = unpack_data(trojan)
     tdata=np.array(tdata)
 
-    print "Size of audio data: " + str(trojan.header[1] * trojan.header[3])
-    
-    startIdx = 0
-    for i in range(len(tdata) / 40000):
-        endIdx = startIdx + 40000
-        chunk = tdata[startIdx:endIdx]
-        chunk = np.array(chunk)
-        chunks.append(chunk)
-        startIdx = endIdx
-        
-    print str(len(chunks))
+    chunks = chunk_data(tdata, 44100)
 
     fft_chunks = []
-
-    payload_chunk = 0
     
     for chunk in chunks:
         fft_chunk = np.fft.fft(chunk)
         fft_chunks.append(fft_chunk)
         
-    freqs = np.fft.fftfreq(40000)
+    freqs = np.fft.fftfreq(44100)
     sampleRate = trojan.header[2]
 
-    freqsd = {}
-
-    for i, freq in enumerate(freqs):
-        freqsd[freq] = i
-        
-    payload_bits = []
-
     payload_bytes = []
-
     tones = []
 
-    """
-    for i in range(256):
-        tone = 15000.0 + i * 2
-        tones.append(tone / sampleRate)
-        
-    toneIndices = []
-
-    for i, tone in enumerate(tones):
-
-        index = get_index(freqs, tone)
-
-        print index
-        toneIndices.append(index)
-        """
-        
-    #toneIndices = [13605, 13610, 13615, 13619, 13624, 13628, 13633, 13637, 13642, 13646, 13651, 13655, 13660, 13664, 13669, 13674, 13678, 13683, 13687, 13692, 13696, 13701, 13705, 13710, 13714, 13719, 13723, 13728, 13732, 13737, 13742, 13746, 13751, 13755, 13760, 13764, 13769, 13773, 13778, 13782, 13787, 13791, 13796, 13801, 13805, 13810, 13814, 13819, 13823, 13828, 13832, 13837, 13841, 13846, 13850, 13855, 13859, 13864, 13869, 13873, 13878, 13882, 13887, 13891, 13896, 13900, 13905, 13909, 13914, 13918, 13923, 13927, 13932, 13937, 13941, 13946, 13950, 13955, 13959, 13964, 13968, 13973, 13977, 13982, 13986, 13991, 13996, 14000, 14005, 14009, 14014, 14018, 14023, 14027, 14032, 14036, 14041, 14045, 14050, 14054, 14059, 14064, 14068, 14073, 14077, 14082, 14086, 14091, 14095, 14100, 14104, 14109, 14113, 14118, 14123, 14127, 14132, 14136, 14141, 14145, 14150, 14154, 14159, 14163, 14168, 14172, 14177, 14181, 14186, 14191, 14195, 14200, 14204, 14209, 14213, 14218, 14222, 14227, 14231, 14236, 14240, 14245, 14250, 14254, 14259, 14263, 14268, 14272, 14277, 14281, 14286, 14290, 14295, 14299, 14304, 14308, 14313, 14318, 14322, 14327, 14331, 14336, 14340, 14345, 14349, 14354, 14358, 14363, 14367, 14372, 14376, 14381, 14386, 14390, 14395, 14399, 14404, 14408, 14413, 14417, 14422, 14426, 14431, 14435, 14440, 14445, 14449, 14454, 14458, 14463, 14467, 14472, 14476, 14481, 14485, 14490, 14494, 14499, 14503, 14508, 14513, 14517, 14522, 14526, 14531, 14535, 14540, 14544, 14549, 14553, 14558, 14562, 14567, 14572, 14576, 14581, 14585, 14590, 14594, 14599, 14603, 14608, 14612, 14617, 14621, 14626, 14630, 14635, 14640, 14644, 14649, 14653, 14658, 14662, 14667, 14671, 14676, 14680, 14685, 14689, 14694, 14699, 14703, 14708, 14712, 14717, 14721, 14726, 14730, 14735, 14739, 14744, 14748, 14753, 14757, 14762 ]
-
-    toneIndices = [13605, 13607, 13609, 13611, 13613, 13615, 13616, 13618, 13620, 13622, 13624, 13625, 13627, 13629, 13631, 13633, 13635, 13636, 13638, 13640, 13642, 13644, 13645, 13647, 13649, 13651, 13653, 13654, 13656, 13658, 13660, 13662, 13664, 13665, 13667, 13669, 13671, 13673, 13674, 13676, 13678, 13680, 13682, 13683, 13685, 13687, 13689, 13691, 13693, 13694, 13696, 13698, 13700, 13702, 13703, 13705, 13707, 13709, 13711, 13713, 13714, 13716, 13718, 13720, 13722, 13723, 13725, 13727, 13729, 13731, 13732, 13734, 13736, 13738, 13740, 13742, 13743, 13745, 13747, 13749, 13751, 13752, 13754, 13756, 13758, 13760, 13762, 13763, 13765, 13767, 13769, 13771, 13772, 13774, 13776, 13778, 13780, 13781, 13783, 13785, 13787, 13789, 13791, 13792, 13794, 13796, 13798, 13800, 13801, 13803, 13805, 13807, 13809, 13810, 13812, 13814, 13816, 13818, 13820, 13821, 13823, 13825, 13827, 13829, 13830, 13832, 13834, 13836, 13838, 13840, 13841, 13843, 13845, 13847, 13849, 13850, 13852, 13854, 13856, 13858, 13859, 13861, 13863, 13865, 13867, 13869, 13870, 13872, 13874, 13876, 13878, 13879, 13881, 13883, 13885, 13887, 13888, 13890, 13892, 13894, 13896, 13898, 13899, 13901, 13903, 13905, 13907, 13908, 13910, 13912, 13914, 13916, 13918, 13919, 13921, 13923, 13925, 13927, 13928, 13930, 13932, 13934, 13936, 13937, 13939, 13941, 13943, 13945, 13947, 13948, 13950, 13952, 13954, 13956, 13957, 13959, 13961, 13963, 13965, 13966, 13968, 13970, 13972, 13974, 13976, 13977, 13979, 13981, 13983, 13985, 13986, 13988, 13990, 13992, 13994, 13996, 13997, 13999, 14001, 14003, 14005, 14006, 14008, 14010, 14012, 14014, 14015, 14017, 14019, 14021, 14023, 14025, 14026, 14028, 14030, 14032, 14034, 14035, 14037, 14039, 14041, 14043, 14045, 14046, 14048, 14050, 14052, 14054, 14055, 14057, 14059, 14061, 14063, 14064, 14066, 14068 ]
-        
+    toneIndices = [i for i in range(15000, 15256)]
+    
     for i, chunk in enumerate(fft_chunks):
 
-        if i == 83:
+        if i > 83:
             break
 
         processed_values = np.abs(chunk)**2
         
         toneValues = [processed_values[i] for i in toneIndices]
-        
+                    
         maxTone = max(toneValues)
-
+        
         for i, tone in enumerate(toneValues):
             if tone == maxTone:
                 print "Found a " + str(i)
                 payload_bytes.append(i)
-                
                 break
-        
-    startIdx = 0
-    for i in range(len(payload_bits)):
-        endIdx = startIdx + 8
-        s = payload_bits[startIdx:endIdx]
-        if len(s) == 8: 
-            nByte = BitArray.from_bits(s).to_int()
-            payload_bytes.append(nByte)
-        startIdx = endIdx
-
         
     return Payload(bytearray(payload_bytes))
