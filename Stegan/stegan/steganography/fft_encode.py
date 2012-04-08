@@ -47,6 +47,10 @@ def encode(payload, container):
     """ Encode a payload inside an audio container using the tone insertion
     algorithm. Returns a Trojan AudioFile with the payload inside it.
     """
+
+    # Throw an exception if the container is too large to be encoded, over 80 minutes
+    if(container.samples() > (container.channels() * container.sampleRate() * 80 * 60)):
+	raise Exception("ERROR!: The length of the container audio file is greater than 80 minutes, which is not supported. Please choose a shorter audio file.")    
     
     trojan_audio_data = []
     
@@ -55,6 +59,10 @@ def encode(payload, container):
     unpacked_data = unpack_data(container)
     
     chunks = chunk_data(unpacked_data, 44100)
+
+    # Throw an exception if the payload is too large for the container
+    if(payload_bytes_length > len(chunks)):
+	raise Exception("ERROR!: The length of the payload input is too large. The maximum number of bytes that can be stored in this container is: " + str(len(chunks)) + ". \n The size of this payload is: " + str(payload_bytes_length));
     
     paybyte_idx = 0
     
@@ -70,10 +78,21 @@ def encode(payload, container):
             
             fft_chunk = np.fft.fft(chunk)
             processed_values = np.abs(chunk)**2
+	    
+	    # Find the index of the frequency (of the frequencies in our byte map) with the highest power
+            max_tone_power = 0;
+	    for toneIdx in toneIndices:
+		if(processed_values[toneIdx] > max_tone_power):
+			max_tone_power = processed_values[toneIdx]
+   	    
 
-            index = toneIndices[payload_byte]
-            power_value = power_values[payload_byte]
-            fft_chunk[index] = math.sqrt(power_value)
+            byte_tone_index = toneIndices[payload_byte]
+	    
+  	    # Set the power of the frequency we are interested in to be 300,000 higher. This value is a guess and seems to work in practice. 
+	    # The hope is that this value is the smallest peak we can reliably detect when decoding.
+            power_value = max_tone_power + 300000
+            fft_chunk[byte_tone_index] = math.sqrt(power_value)
+	    
 
             encoded_chunk = np.fft.ifft(fft_chunk)
             encoded_chunks.append(encoded_chunk)
@@ -116,13 +135,11 @@ def decode(trojan):
     
     for i, chunk in enumerate(fft_chunks):
 
-        if i > 83:
-            break
-
         processed_values = np.abs(chunk)**2
         
         toneValues = [processed_values[i] for i in toneIndices]
                     
+	# Find the maximum of the tones we're interested in
         maxTone = max(toneValues)
         
         for i, tone in enumerate(toneValues):
