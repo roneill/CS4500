@@ -54,9 +54,6 @@ def decode_data(container, chunks):
     
     for i, chunk in enumerate(fft_chunks):
 
-        if i > 83:
-            break
-
         processed_values = np.abs(chunk)**2
         toneValues = {}
     
@@ -80,6 +77,10 @@ def encode(payload, container):
     """ Encode a payload inside an audio container using the tone insertion
     algorithm. Returns a Trojan AudioFile with the payload inside it.
     """
+
+    # Throw an exception if the container is too large to be encoded, over 80 minutes
+    if(container.samples() > (container.channels() * container.sampleRate() * 80 * 60)):
+	raise Exception("ERROR!: The length of the container audio file is greater than 80 minutes, which is not supported. Please choose a shorter audio file.")    
     
     trojan_audio_data = []    
     payload_bytes_length = len(payload.data)

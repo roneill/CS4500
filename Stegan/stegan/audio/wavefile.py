@@ -8,6 +8,15 @@ class WaveFile(object):
         self.header = header
         self.data = data
     
+    def samples(self):
+	return self.header[3]
+	
+    def channels(self):
+	return self.header[0]
+	
+    def sampleRate(self):
+	return self.header[2]
+
     @classmethod
     def fromFile(cls, path):
         f = wave.open(path, 'rb')

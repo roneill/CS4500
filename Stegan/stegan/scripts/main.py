@@ -67,7 +67,6 @@ def run_encode(args):
         print "[Stegan] There was an error while encoding"
         print "[Stegan] %s" % type(e)
         print "[Stegan] %s" % e
-        traceback.print_exc()
 
 def run_decode(args):
     print "[Stegan] Decoding from %s" % (args['trojan'])
