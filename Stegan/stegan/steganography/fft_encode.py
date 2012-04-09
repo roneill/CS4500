@@ -45,14 +45,16 @@ def unpack_data(container):
 
 def decode_data(container, chunks):
     fft_chunks = [np.fft.fft(chunk) for chunk in chunks]
-    freqs = np.fft.fftfreq(44100)
-    sampleRate = container.header[2]
+    sampleRate = container.sampleRate()
+    freqs = np.fft.fftfreq(sampleRate)
     payload_bytes = []
     tones = []
 
     toneIndices = range(15000, 15256)
     
     for i, chunk in enumerate(fft_chunks):
+        if i >= 83:
+            break
 
         processed_values = np.abs(chunk)**2
         toneValues = {}
@@ -135,7 +137,7 @@ def decode(trojan):
     
     tdata = unpack_data(trojan)
     tdata=np.array(tdata)
-    chunks = chunk_data(tdata, trojan.sampleRate)
+    chunks = chunk_data(tdata, trojan.sampleRate())
     payload_bytes = decode_data(trojan, chunks)
         
     return Payload(bytearray(payload_bytes))
