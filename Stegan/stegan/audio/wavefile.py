@@ -7,12 +7,6 @@ class WaveFile(object):
     def __init__(self, header, data):
         self.header = header
         self.data = data
-        self.data2 = data
-        
-        #print "[WaveFile] New WaveFile"
-        print "[WaveFile] Header\n%s" % repr(self.header)
-        print "[WaveFile] len(data) = %s" % len(self.data)
-        #print "[WaveFile] type(data) = %s" % type(self.data)
     
     def samples(self):
 	return self.header[3]
