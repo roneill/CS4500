@@ -37,7 +37,7 @@ def unchunk(chunks):
 def unpack_data(container):
     tdata = struct.unpack('{n}h'.format(n=container.header[1] *
                                         container.header[3]),
-                          str(container.data2))
+                          str(container.data))
 
     tdata = np.array(tdata)
 
