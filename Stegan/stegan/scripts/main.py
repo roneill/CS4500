@@ -53,12 +53,7 @@ def run_encode(args):
     
     try:
         payload = Payload.fromFile(args['payload'])
-        #container = AudioFile.fromFile('wave', args['container'])
-        container = WaveFile.fromFile(args['container'])
-    
-        #stegStrategy = StegStrategy.getStrategy()
-        #trojan = stegStrategy.encode(payload, container)
-
+        container = AudioFile.fromFile(args['container'])
         
         trojan = fft_encode.encode(payload, container)
         trojan.writeToFile(args['trojan'])
@@ -73,7 +68,7 @@ def run_decode(args):
     print "[Stegan] Decoding from %s" % (args['trojan'])
     
     try:
-        trojan = WaveFile.fromFile(args['trojan'])
+        trojan = AudioFile.fromFile(args['trojan'])
 
         payload = fft_encode.decode(trojan)
 
