@@ -146,7 +146,10 @@ def encode(payload, container):
             index = toneIndices[payload_byte]
             power_value = power_values[payload_byte]
             max_power_value = max(power_values)
-            lowest_value = find_lowest_power_value(chunk, payload_byte, max_power_value, container.sampleRate()) 
+            lowest_value = find_lowest_power_value(chunk,
+                                                   payload_byte,
+                                                   max_power_value,
+                                                   container.sampleRate()) 
             fft_chunk[index] = math.sqrt(max_power_value) + lowest_value
             
             encoded_chunk = np.fft.ifft(fft_chunk)
@@ -158,7 +161,8 @@ def encode(payload, container):
 
     decoded_payload = decode_data(container.sampleRate(), encoded_chunks)
     payload_delta = compare_payloads(payload.data, decoded_payload)
-    percent_difference = ((payload_bytes_length - payload_delta) / payload_bytes_length) * 100.0
+    percent_difference = ((payload_bytes_length - payload_delta) /
+                          payload_bytes_length) * 100.0
     
     if payload_delta == 0:
         print "Payload encoded successfully"
