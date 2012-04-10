@@ -29,7 +29,7 @@ def unchunk(chunks):
                 byte = 32767
             elif byte < -32768:
                 byte = -32768
-            
+                
             unchunked_bytes.append(byte)
     
     return unchunked_bytes
@@ -43,12 +43,10 @@ def unpack_data(container):
 
     return tdata
 
-def decode_data(container, chunks):
+def decode_data(sample_rate, chunks):
     fft_chunks = [np.fft.fft(chunk) for chunk in chunks]
-    sampleRate = container.sampleRate()
-    freqs = np.fft.fftfreq(sampleRate)
+    freqs = np.fft.fftfreq(sample_rate)
     payload_bytes = []
-    tones = []
 
     toneIndices = range(15000, 15256)
     
@@ -64,9 +62,59 @@ def decode_data(container, chunks):
             
         maxTone = max(toneValues)
         payload_bytes.append(toneValues[maxTone])
-                
+
+    for b in payload_bytes:
+        print "Found a: " + str(b)
+        
     return payload_bytes
 
+def encode_chunk(chunk, payload_byte, power_value):
+
+    toneIndices = range(15000, 15256)
+            
+    fft_chunk = np.fft.fft(chunk)
+    processed_values = np.abs(chunk)**2
+            
+    power_values = [processed_values[i] for i in range(15000, 15256)]
+
+    index = toneIndices[payload_byte]
+    max_tone = max(power_values)
+    #print "Index is: " + str(index)
+    #print "Power values is: " + str(power_value)
+    fft_chunk[index] = math.sqrt(max_tone) + power_value
+
+    encoded_chunk = np.fft.ifft(fft_chunk)
+
+    return encoded_chunk
+
+def can_decode_byte(encoded_chunk, original_byte, sample_rate):
+    """This predicate takes a chunk and determines if the given
+       byte can be successfuly decoded from the chunk"""
+
+    payload_bytes = decode_data(sample_rate, [encoded_chunk])
+    
+    return payload_bytes[0] == original_byte
+
+def find_lowest_power_value(chunk, payload_byte, minimum_value, sample_rate):
+    """Takes a chunk and a payload byte and attempts to encode at the
+       minimum value. Keeps incrementing the minimum value by a factor
+       of two in order to find the lowest value that can be successfully
+       decoded."""
+
+    encoded_chunk = chunk
+    current_value = 30000000
+    min_value = current_value
+
+    while(not can_decode_byte(encoded_chunk, payload_byte, sample_rate)):
+        current_value = min_value
+        encoded_chunk = encode_chunk(chunk, payload_byte, current_value)
+        #print "Can decode byte is: " + str(can_decode_byte(encoded_chunk, payload_byte, sample_rate))
+        min_value *= 1.5
+        
+    print "Found a value"
+    
+    return current_value
+    
 def compare_payloads(payload, decoded):    
     bytes_different = 0
     for b1, b2 in zip(payload, decoded):
@@ -84,7 +132,6 @@ def encode(payload, container):
     if(container.samples() > (container.channels() * container.sampleRate() * 80 * 60)):
 	raise Exception("ERROR!: The length of the container audio file is greater than 80 minutes, which is not supported. Please choose a shorter audio file.")    
     
-    trojan_audio_data = []    
     payload_bytes_length = len(payload.data)
     unpacked_data = unpack_data(container)
     chunks = chunk_data(unpacked_data, 44100)
@@ -94,6 +141,10 @@ def encode(payload, container):
     toneIndices = range(15000, 15256)
     
     for chunk in chunks:
+        fft_chunk = np.fft.fft(chunk)
+        encoded_chunk = np.fft.ifft(fft_chunk)
+        encoded_chunks.append(encoded_chunk)
+        """
         if paybyte_idx < payload_bytes_length:
             payload_byte = payload.data[paybyte_idx]
             
@@ -104,16 +155,21 @@ def encode(payload, container):
 
             index = toneIndices[payload_byte]
             power_value = power_values[payload_byte]
-            fft_chunk[index] = math.sqrt(max(power_values)) + 5000000
+            max_power_value = max(power_values)
+            lowest_value = find_lowest_power_value(chunk, payload_byte, max_power_value, container.sampleRate()) 
+            fft_chunk[index] = math.sqrt(max_power_value) + lowest_value
 
+            fft_chunk[0] = 0
+            fft_chunk[22050] = 0
+            
             encoded_chunk = np.fft.ifft(fft_chunk)
             encoded_chunks.append(encoded_chunk)
 
             paybyte_idx +=1
         else:
             encoded_chunks.append(chunk)
-
-    decoded_payload = decode_data(container, encoded_chunks)
+            """
+    decoded_payload = decode_data(container.sampleRate(), encoded_chunks)
     payload_delta = compare_payloads(payload.data, decoded_payload)
     percent_difference = ((payload_bytes_length - payload_delta) / payload_bytes_length) * 100.0
     
@@ -138,6 +194,6 @@ def decode(trojan):
     tdata = unpack_data(trojan)
     tdata=np.array(tdata)
     chunks = chunk_data(tdata, trojan.sampleRate())
-    payload_bytes = decode_data(trojan, chunks)
+    payload_bytes = decode_data(trojan.sampleRate(), chunks)
         
     return Payload(bytearray(payload_bytes))
