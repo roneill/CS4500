@@ -8,19 +8,21 @@ from stegan.audio.wavefile import WaveFile
 from stegan.utils.bitarray import BitArray
 from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 
-def chunk_data(data, tone_length):
+def chunk_data(data, sample_rate):
+    """Break input data into chunks equal to the sample rate"""
     chunks = []
     
     startIdx = 0
-    for i in range(len(data) / tone_length):
-        endIdx = startIdx + tone_length
+    for i in range(len(data) / sample_rate):
+        endIdx = startIdx + sample_rate
         chunk = data[startIdx:endIdx]
         chunks.append(chunk)
         startIdx = endIdx
 
     return chunks
 
-def unchunk(chunks):
+def unchunk_data(chunks):
+    """Convert the chunks of data back into a byte stream"""
     unchunked_bytes = []
 
     for chunk in chunks:
@@ -35,6 +37,7 @@ def unchunk(chunks):
     return unchunked_bytes
 
 def unpack_data(container):
+    """Read raw data from a wave file into an array"""
     tdata = struct.unpack('{n}h'.format(n=container.header[1] *
                                         container.header[3]),
                           str(container.data))
@@ -44,7 +47,8 @@ def unpack_data(container):
     return tdata
 
 def decode_data(sample_rate, chunks):
-    fft_chunks = [np.fft.fft(chunk) for chunk in chunks]
+    """Decode bytes from chunks of data"""
+    fft_chunks = [np.fft.rfft(chunk) for chunk in chunks]
     freqs = np.fft.fftfreq(sample_rate)
     payload_bytes = []
 
@@ -69,7 +73,7 @@ def encode_chunk(chunk, payload_byte, power_value):
 
     toneIndices = range(15000, 15256)
             
-    fft_chunk = np.fft.fft(chunk)
+    fft_chunk = np.fft.rfft(chunk)
     processed_values = np.abs(chunk)**2
             
     power_values = [processed_values[i] for i in range(15000, 15256)]
@@ -78,7 +82,7 @@ def encode_chunk(chunk, payload_byte, power_value):
     max_tone = max(power_values)
     fft_chunk[index] = math.sqrt(max_tone) + power_value
 
-    encoded_chunk = np.fft.ifft(fft_chunk)
+    encoded_chunk = np.fft.irfft(fft_chunk)
 
     return encoded_chunk
 
@@ -138,7 +142,7 @@ def encode(payload, container):
         if paybyte_idx < payload_bytes_length:
             payload_byte = payload.data[paybyte_idx]
             
-            fft_chunk = np.fft.fft(chunk)
+            fft_chunk = np.fft.rfft(chunk)
             processed_values = np.abs(chunk)**2
             
             power_values = [processed_values[i] for i in range(15000, 15256)]
@@ -152,7 +156,7 @@ def encode(payload, container):
                                                    container.sampleRate()) 
             fft_chunk[index] = math.sqrt(max_power_value) + lowest_value
             
-            encoded_chunk = np.fft.ifft(fft_chunk)
+            encoded_chunk = np.fft.irfft(fft_chunk)
             encoded_chunks.append(encoded_chunk)
 
             paybyte_idx +=1
@@ -169,7 +173,7 @@ def encode(payload, container):
     else:
         print "Warning: encoded file was different from original by %.2f%%" % (100 - percent_difference)
             
-    unchunked_bytes = unchunk(encoded_chunks)
+    unchunked_bytes = unchunk_data(encoded_chunks)
 
     print "Mixed chunks: " + str(paybyte_idx)
     
