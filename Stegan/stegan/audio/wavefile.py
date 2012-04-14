@@ -18,13 +18,16 @@ class WaveFile(object):
         return self.header[1]
         
     def samples(self):
-	return self.header[3]
+	    return self.header[3]
 	
     def channels(self):
-	return self.header[0]
+    	return self.header[0]
 	
     def sampleRate(self):
-	return self.header[2]
+	    return self.header[2]
+
+    def numChunks(self):
+    	return self.samples() / float(self.sampleRate())
 
     def setHeader(self, header):
         self.header = header
