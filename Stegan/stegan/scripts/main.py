@@ -8,6 +8,7 @@ import sys
 import traceback
 
 from stegan.payload import Payload
+from stegan.audio import audio, mp3
 from stegan.audio.wavefile import WaveFile
 from stegan.steganography import modify_lsb, tone_insertion, fft_encode
 
@@ -53,11 +54,24 @@ def run_encode(args):
     
     try:
         payload = Payload.fromFile(args['payload'])
-        #container = AudioFile.fromFile('wave', args['container'])
-        container = WaveFile.fromFile(args['container'])
-        trojan = WaveFile.emptyFile(args['trojan'], container.header)
         
-        fft_encode.encode(payload, container, trojan)
+        if audio.fileType(args['container']) == "mp3":
+            wavpath = mp3.decode(args['container'])
+            container = WaveFile.fromFile(wavpath)
+        else:
+            container = WaveFile.fromFile(args['container'])
+        
+        
+        if audio.fileType(args['trojan']) == 'mp3':
+            tempfile = args['trojan'].replace('.mp3', '.wav')
+
+            trojan = WaveFile.emptyFile(tempfile, container.header)
+            fft_encode.encode(payload, container, trojan)
+
+            mp3path = mp3.encode(tempfile, args['trojan'])
+        else:
+            trojan = WaveFile.emptyFile(args['trojan'], container.header)
+            fft_encode.encode(payload, container, trojan)
         
     except Exception as e:
         print "[Stegan] There was an error while encoding"
@@ -69,7 +83,11 @@ def run_decode(args):
     print "[Stegan] Decoding from %s" % (args['trojan'])
     
     try:
-        trojan = WaveFile.fromFile(args['trojan'])
+        if audio.fileType(args['trojan']) == 'mp3':
+            wavpath = mp3.decode(args['trojan'])
+            trojan = WaveFile.fromFile(wavpath)
+        else:
+            trojan = WaveFile.fromFile(args['trojan'])
 
         payload = fft_encode.decode(trojan)
 

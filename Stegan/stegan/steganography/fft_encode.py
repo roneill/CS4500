@@ -104,9 +104,15 @@ def can_decode_byte(encoded_chunk, original_byte, sample_rate, encoding_depth):
        byte can be successfuly decoded from the chunk"""
 
     payload_byte = decode_data(sample_rate, encoded_chunk, encoding_depth)
+    
     #print "Payload byte: "+ str(payload_byte)
     #print "Original byte: " + str(original_byte)
     #print "Equal" +  str(payload_byte == original_byte)
+    print "{original} -> {payload}  ({equal})".format(
+                original=str(original_byte),
+                payload=str(payload_byte),
+                equal=str(payload_byte == original_byte)
+            )
     
     return payload_byte == original_byte
 
