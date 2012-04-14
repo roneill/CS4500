@@ -55,18 +55,15 @@ def run_encode(args):
         payload = Payload.fromFile(args['payload'])
         #container = AudioFile.fromFile('wave', args['container'])
         container = WaveFile.fromFile(args['container'])
-    
-        #stegStrategy = StegStrategy.getStrategy()
-        #trojan = stegStrategy.encode(payload, container)
-
+        trojan = WaveFile.emptyFile(args['trojan'], container.header)
         
-        trojan = fft_encode.encode(payload, container)
-        trojan.writeToFile(args['trojan'])
+        fft_encode.encode(payload, container, trojan)
         
     except Exception as e:
         print "[Stegan] There was an error while encoding"
         print "[Stegan] %s" % type(e)
         print "[Stegan] %s" % e
+        traceback.print_exc()
 
 def run_decode(args):
     print "[Stegan] Decoding from %s" % (args['trojan'])
