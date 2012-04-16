@@ -1,20 +1,19 @@
 import sys, math
 import numpy as np
 import struct
-import wave
+
 
 from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
-from stegan.utils.bitarray import BitArray
-from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 
 # The maximum payload density (number of 256 frequency ranges we will encode in)
-max_payload_density = 100
+max_payload_density = 78
 
 # An module level variable to store a list of the tone ranges that we will encode in
-base = 10000
+base = 100
 tone_ranges = [[base + (offset * 256) + x for x in range(0, 256)] for offset in range(0, max_payload_density)]
 
+tone_ranges.reverse()
 
 def decode_data(sample_rate, chunk, encoding_depth):
     """Decode a byte from a chunk of data"""
@@ -50,7 +49,7 @@ def decode_data_deep(sample_rate, chunk, furthest_depth):
     	toneValues = {}
     
     	for i, toneIdx in enumerate(toneIndices):
-        	toneValues[processed_values[toneIdx]] = i
+            toneValues[processed_values[toneIdx]] = i
             
     	maxTone = max(toneValues)
     	payload_byte = toneValues[maxTone]
@@ -102,7 +101,7 @@ def encode_chunk_for_realz(chunk, payload_bytes, sample_rate):
 def can_decode_byte(encoded_chunk, original_byte, sample_rate, encoding_depth):
     """This predicate takes a chunk and determines if the given
        byte can be successfuly decoded from the chunk"""
-
+    
     payload_byte = decode_data(sample_rate, encoded_chunk, encoding_depth)
     
     #print "Payload byte: "+ str(payload_byte)
@@ -139,9 +138,9 @@ def encode(payload, container, trojan):
     """
 
     number_of_chunks = container.numChunks()
-
+    
     # Find the lowest required density of the payload, rounded up since if it is larger than the maximum payload density it cannot all be encoded
-    payload_density = int(math.ceil(len(payload) / number_of_chunks))
+    payload_density = int(math.ceil(len(payload) / number_of_chunks)) + 1
 
     print "[encode] len(payload) = %s" % len(payload)
     print "[encode] number_of_chunks = %s" % number_of_chunks
@@ -156,7 +155,7 @@ def encode(payload, container, trojan):
     
     paybyte_idx = 0
     for idx, chunk in enumerate(container.chunks()):
-        chunk_size = len(chunk) / container.sampleWidth()
+        chunk_size = len(chunk)
         
         if chunk_size < container.sampleRate():
             print "[encode] chunk_size = %s, sampleRate = %s" % (chunk_size, container.sampleRate())
@@ -205,8 +204,8 @@ def decode(trojan):
 
                 number_of_chunks = trojan.numChunks()
 
-    		    # Calculate the payload density
-                payload_density = int(math.ceil(payload_len / number_of_chunks))
+                # Calculate the payload density
+                payload_density = int(math.ceil(payload_len / number_of_chunks)) + 1
 
                 print "[decode] payload_len = %s" % payload_len
                 print "[decode] number_of_chunks = %s" % number_of_chunks
@@ -218,6 +217,7 @@ def decode(trojan):
     	    if((payload_len - len(payload_bytes)) < payload_density):
                 print "Less bytes left than the density"
                 payload_density = payload_len - len(payload_bytes)
+                print "Payload density" + repr(payload_density)
 
             # print "Payload length is: " + str(payload_len) + "Current bytes length is: " + str(len(payload_bytes))
             chunk_payload_bytes = decode_data_deep(trojan.sampleRate(), chunk, payload_density)
