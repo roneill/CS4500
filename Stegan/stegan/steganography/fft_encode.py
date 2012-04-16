@@ -9,10 +9,10 @@ from stegan.utils.bitarray import BitArray
 from stegan.utils.bits import get_bit, set_lsb, flip_lsb, get_lsb
 
 # The maximum payload density (number of 256 frequency ranges we will encode in)
-max_payload_density = 15
+max_payload_density = 100
 
 # An module level variable to store a list of the tone ranges that we will encode in
-base = 15000
+base = 10000
 tone_ranges = [[base + (offset * 256) + x for x in range(0, 256)] for offset in range(0, max_payload_density)]
 
 
@@ -108,11 +108,11 @@ def can_decode_byte(encoded_chunk, original_byte, sample_rate, encoding_depth):
     #print "Payload byte: "+ str(payload_byte)
     #print "Original byte: " + str(original_byte)
     #print "Equal" +  str(payload_byte == original_byte)
-    print "{original} -> {payload}  ({equal})".format(
-                original=str(original_byte),
-                payload=str(payload_byte),
-                equal=str(payload_byte == original_byte)
-            )
+    #print "{original} -> {payload}  ({equal})".format(
+    #            original=str(original_byte),
+    #            payload=str(payload_byte),
+    #            equal=str(payload_byte == original_byte)
+    #        )
     
     return payload_byte == original_byte
 
@@ -123,7 +123,7 @@ def find_lowest_power_value(chunk, payload_byte, minimum_value, sample_rate, enc
        decoded."""
 
     encoded_chunk = chunk
-    current_value = 600000
+    current_value = 300000
     min_value = current_value
 
     while(not can_decode_byte(encoded_chunk, payload_byte, sample_rate, encoding_depth)):
@@ -151,7 +151,7 @@ def encode(payload, container, trojan):
     if(payload_density >= max_payload_density):
         raise Exception("Error: Payload is too large! Please choose a smaller one.")
 
-    packed_payload_len = struct.pack("H", len(payload))
+    packed_payload_len = struct.pack("I", len(payload))
     packed_payload_len_bytes = bytearray(packed_payload_len)
     
     paybyte_idx = 0
@@ -162,7 +162,7 @@ def encode(payload, container, trojan):
             print "[encode] chunk_size = %s, sampleRate = %s" % (chunk_size, container.sampleRate())
             trojan.writeChunk(chunk)
 
-        elif idx < 2:
+        elif idx < 4:
             print "[encode] writing payload length"
             paylen_byte = packed_payload_len_bytes[idx]
             encoded = encode_chunk_for_realz(chunk, [paylen_byte], container.sampleRate())
@@ -171,7 +171,8 @@ def encode(payload, container, trojan):
         elif paybyte_idx < len(payload):
             payload_bytes = payload.data[paybyte_idx:(paybyte_idx + payload_density)]
 
-            print "[encode] (%s / %s) payload_bytes = %s" % (paybyte_idx, len(payload), payload_bytes)
+            print "[encode] (%s / %s) [%s%%] payload_bytes = %s" % (
+                paybyte_idx, len(payload), (paybyte_idx * 100 / len(payload)), "") # payload_bytes)
             encoded = encode_chunk_for_realz(chunk, payload_bytes, container.sampleRate())
             trojan.writeChunk(encoded)
             paybyte_idx += payload_density
@@ -195,12 +196,12 @@ def decode(trojan):
     for idx, chunk in enumerate(trojan.chunks()):
         # print idx
 
-        if idx < 2:
+        if idx < 4:
             byte = decode_data(trojan.sampleRate(), chunk, 0)
             payload_len_bytes.append(byte)
 
-            if idx == 1:
-                payload_len = struct.unpack("H", str(payload_len_bytes))[0]
+            if idx == 3:
+                payload_len = struct.unpack("I", str(payload_len_bytes))[0]
 
                 number_of_chunks = trojan.numChunks()
 

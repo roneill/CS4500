@@ -2,7 +2,7 @@ import os
 import subprocess
 from wavefile import WaveFile
 
-LAME_PATH = "lame"
+LAME_PATH = "/course/cs4500wc/bin/lame"
 
 def decode(path):
     """ Decode an MP3 File into a WAVE File """
@@ -16,4 +16,4 @@ def decode(path):
     
 def encode(wavepath, resultpath):
     print "[MP3File] Encoding %s to %s" % (wavepath, resultpath)
-    subprocess.call([LAME_PATH, wavepath, resultpath])
+    subprocess.call([LAME_PATH, "-b", "320", wavepath, resultpath])
