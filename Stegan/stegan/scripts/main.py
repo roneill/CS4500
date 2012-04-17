@@ -116,4 +116,3 @@ def run():
         run_encode(args)
     elif args['action'] == "decode":
         run_decode(args)
-    
