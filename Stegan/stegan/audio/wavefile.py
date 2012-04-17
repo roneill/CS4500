@@ -27,7 +27,7 @@ class WaveFile(object):
 	    return self.header[2]
 
     def numChunks(self):
-    	return self.samples() / float(self.sampleRate())
+    	return self.samples() / float(self.sampleRate() / 2)
 
     def setHeader(self, header):
         self.header = header
@@ -59,7 +59,8 @@ class WaveFile(object):
             chunk = self._nextChunk()
 
     def _nextChunk(self):
-        return self.fileHandle.readframes(self.sampleRate() / 2)
+        return self.fileHandle.readframes(self.sampleRate() /
+                                          self.channels())
 
     def _unpackChunk(self, chunk):
         chunkSize = len(chunk) / self.channels()
