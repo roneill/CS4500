@@ -89,9 +89,9 @@ def run_decode(args):
         else:
             trojan = WaveFile.fromFile(args['trojan'])
 
-        payload = fft_encode.decode(trojan)
-
-        payload.writeToFile(args['payload'])
+        payload = Payload.openFile(args['payload'])
+            
+        fft_encode.decode(trojan, payload)
         
     except Exception as e:
         print "[Stegan] There was an error while decoding"

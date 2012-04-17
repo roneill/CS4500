@@ -47,6 +47,12 @@ class WaveFile(object):
         f.setparams(header)
         return WaveFile(header, f)
 
+    def getSizeChunk(self):
+        chunk = self._nextChunk()
+        unpacked_chunk = self._unpackChunk(chunk)
+
+        return unpacked_chunk
+    
     def chunks(self):
         chunk = self._nextChunk()
         while chunk:
@@ -57,11 +63,10 @@ class WaveFile(object):
         return self.fileHandle.readframes(self.sampleRate())
 
     def _unpackChunk(self, chunk):
-        print "Length of chunk unpack: " + str(len(chunk))
         chunk_size = len(chunk) / self.channels()
         nbytes = chunk_size # this may not be valid in all cases
         chunkdata = struct.unpack('{n}h'.format(n=nbytes), str(chunk))
-	return chunkdata 
+	return chunkdata
 
     def unchunkData(self, chunk):
         """Convert the chunks of data back into a byte stream"""
@@ -78,7 +83,6 @@ class WaveFile(object):
         return unchunkedBytes
     
     def _packChunk(self, chunk):
-        print "Length of chunk: pack " + str(len(chunk))
         unchunkedBytes = self.unchunkData(chunk)
         packedChunk = ''.join(struct.pack('h', b) for b in unchunkedBytes)
 

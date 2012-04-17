@@ -16,4 +16,4 @@ def decode(path):
     
 def encode(wavepath, resultpath):
     print "[MP3File] Encoding %s to %s" % (wavepath, resultpath)
-    subprocess.call([LAME_PATH, "-b", "320", "-q1", wavepath, resultpath])
+    subprocess.call([LAME_PATH, "-b", "320", wavepath, resultpath])
