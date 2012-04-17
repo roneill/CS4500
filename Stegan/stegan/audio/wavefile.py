@@ -8,9 +8,9 @@ class WaveFile(object):
     def __init__(self, header, fileHandle):
         # The container must be less than 80 minutes
         if(header[3] > (header[0] * header[2] * 80 * 60)):
-            raise Exception("""ERROR!: The length of the container audio file is greater
-                               than 80 minutes, which is not supported. Please choose
-                               a shorter audio file.""")    
+            raise Exception("""ERROR!: The length of the container audio file is
+                               greater than 80 minutes, which is not supported.
+                               Please choose a shorter audio file.""")    
         self.header = header
         self.fileHandle = fileHandle
 
@@ -24,7 +24,7 @@ class WaveFile(object):
     	return self.header[0]
 	
     def sampleRate(self):
-	    return self.header[2] / 2
+	    return self.header[2]
 
     def numChunks(self):
     	return self.samples() / float(self.sampleRate())
@@ -37,7 +37,6 @@ class WaveFile(object):
         f = wave.open(path, 'rb')
         
         header = f.getparams()
-        #data = f.readframes(header[3])
         
         return WaveFile(header, f)
 
@@ -60,12 +59,11 @@ class WaveFile(object):
             chunk = self._nextChunk()
 
     def _nextChunk(self):
-        return self.fileHandle.readframes(self.sampleRate())
+        return self.fileHandle.readframes(self.sampleRate() / 2)
 
     def _unpackChunk(self, chunk):
-        chunk_size = len(chunk) / self.channels()
-        nbytes = chunk_size # this may not be valid in all cases
-        chunkdata = struct.unpack('{n}h'.format(n=nbytes), str(chunk))
+        chunkSize = len(chunk) / self.channels()
+        chunkdata = struct.unpack('{n}h'.format(n=chunkSize), str(chunk))
 	return chunkdata
 
     def unchunkData(self, chunk):

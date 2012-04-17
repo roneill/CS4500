@@ -26,7 +26,6 @@ class Payload(object):
         return self.size
 
     def payloadSize(self):
-        print "Payload size is: " + str(self.size)
         payloadLength = struct.pack("I", self.size)
         payloadLengthBytes = bytearray(payloadLength)
 
@@ -40,10 +39,6 @@ class Payload(object):
             return None
         else:
             return chunk_bytes
-
-    #def _unpackChunk(self, chunk, size):
-    #    chunkdata = struct.unpack('{n}h'.format(n=nbytes, size), chunk)
-    #    return chunkdata 
 
     def _nextChunk(self, size):
         return self.filehandle.read(size)
