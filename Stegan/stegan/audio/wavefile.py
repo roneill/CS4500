@@ -27,7 +27,8 @@ class WaveFile(object):
 	    return self.header[2]
 
     def numChunks(self):
-    	return self.samples() / float(self.sampleRate() / 2)
+    	return self.samples() / float(self.sampleRate() / 
+                                      self.channels())
 
     def setHeader(self, header):
         self.header = header
@@ -47,12 +48,14 @@ class WaveFile(object):
         return WaveFile(header, f)
 
     def getSizeChunk(self):
+        """Gets the chunk encoded with the size of the payload """
         chunk = self._nextChunk()
         unpacked_chunk = self._unpackChunk(chunk)
 
         return unpacked_chunk
     
     def chunks(self):
+        """Returns a generator that reads chunks of the wave file."""
         chunk = self._nextChunk()
         while chunk:
             yield self._unpackChunk(chunk)
@@ -63,12 +66,16 @@ class WaveFile(object):
                                           self.channels())
 
     def _unpackChunk(self, chunk):
+        """Unpacks the current chunk from its string representation
+           into an array of shorts"""
         chunkSize = len(chunk) / self.channels()
         chunkdata = struct.unpack('{n}h'.format(n=chunkSize), str(chunk))
 	return chunkdata
 
     def unchunkData(self, chunk):
-        """Convert the chunks of data back into a byte stream"""
+        """Convert the chunks of data back into a byte stream.
+           Bytes that are too large or small to be represented are
+           recorded as the maximum value"""
         unchunkedBytes = []
 
         for byte in chunk:
@@ -82,12 +89,15 @@ class WaveFile(object):
         return unchunkedBytes
     
     def _packChunk(self, chunk):
+        """Pack the given chunk from a byte represenation 
+           to a string representation to be stored."""
         unchunkedBytes = self.unchunkData(chunk)
         packedChunk = ''.join(struct.pack('h', b) for b in unchunkedBytes)
 
         return packedChunk
         
     def writeChunk(self, chunk):
+        """Write this chunk to the wave file"""
         packedChunk = self._packChunk(chunk)
         self.fileHandle.writeframes(packedChunk)
         

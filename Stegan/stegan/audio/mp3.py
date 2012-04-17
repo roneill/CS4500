@@ -2,7 +2,7 @@ import os
 import subprocess
 from wavefile import WaveFile
 
-LAME_PATH = "/usr/local/bin/lame"
+LAME_PATH = "/course/cs4500wc/bin/lame"
 
 def decode(path):
     """ Decode an MP3 File into a WAVE File """

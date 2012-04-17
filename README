@@ -1,0 +1,89 @@
+Team Steganosaurus
+==================
+
+Team Members
+------------
+* Bob O'Neill (rjoneill@gmail.com)
+* Matt Garnes (garnes.m@husky.neu.edu)
+* George Proctor (proctor.g@husky.neu.edu)
+* Daniel Bostwick (bostwick.d@gmail.com)
+
+Usage
+-----
+To run our software on the CCIS Linux machines, simply cd
+into the /CS4500/Stegan/bin/ directory and run the stegan executable with
+the correct arguments. Following the specifications given for the
+semester project software, the available commands are:
+
+Encode a payload into a container audio file and write the result to
+trojan > stegan --encode container payload trojan
+
+Decode the data hidden in trojan into payload
+>  stegan --decode trojan payload
+
+In any place that you specify the trojan or the container audio file
+path, including the output path for encode, you can use an mp3 or wave
+file. Our software will make the necessary conversions using the Lame
+executable.
+
+Algorithm Explanation 
+---------------------
+First, we break the container audio file into chunks, each chunk being
+one second of audio on one channel (44100 samples). We calculate the
+"density" of the encoding, defined as the number of bytes that will be
+encoded into each chunk of audio. Then, for each chunk, we take an fft
+of the audio to find the power of each frequency. For every payload
+byte that will be encoded into the chunk, we look at the power of the
+frequencies in a certain range (for example 15000 Hz to 15255 Hz) and
+increase the power of the frequency that will represent the byte to be
+encoded. The power of the frequency is determined by starting from a
+base value (determined through experimentation), increasing the power
+until the value can be reliably decoded. Each frequency represents a
+byte value from 1 - 256. To encode further bytes in the same chunk,
+this process is repeated using more ranges of frequencies lower than
+before. Using this strategy, we also encode the length of the payload
+at the beginning of the file to aid in decoding.
+
+To decode, we chunk the input audio file in the same way as before. We
+first decode the payload size and with that compute the density of the
+data. For each chunk we take an fft and find the power of each
+frequency. Using the computed density value, we know exactly which
+frequency ranges we expect data to be encoded, so we find the
+strongest frequency in each range and write the byte that this
+frequency represents. In this way we can reconstruct the data from the
+original payload.
+
+Limitations/Known Issues When the Output is Converted to MP3
+------------------------------------------------------------
+1. We have found that our software performs
+best with quieter audio. The ideal candidate is acoustic music, such
+as the example wav file that you gave us, Hewlett.wav. When we have
+tested our software with loud input or input with a large variety of
+frequencies present (such as electronic music), the software will
+attempt to compensate for the loud frequencies already present by
+increasing the volume. The result is a very un-steganographic
+container file filled with loud beeps and tones.
+
+2. Our software is technically able to operate on payloads with a size
+up to 0.1% of the carrier audio file size. However, since our
+algorithm broadens the range of frequencies that will be used to
+encode the data the larger the payload is, this will result in less
+steganographic results. In addition, since this broader range of
+frequencies starts to move into ranges that are more likely to have
+existing music in them, the reliability of decoding suffers. Some of
+the data is not able to be recovered. So, in short, the smaller the
+payload, the more accurate and steganographic the output will be. A
+user may be interested in compression payloads before encoding them
+using our software. This will allow the user to encode a much larger
+amount of data, although they must be careful that nothing is lost,
+making decompression of the result impossible.
+
+3. The bit rate of the MP3 conversion has a large impact on the
+accuracy of decoded payload data. If the bit rate is 320 kbps, the
+accuracy is much higher than a 128kbps or 192kbps MP3 file. We suggest
+that 320 kbps conversion is used for the best results.
+
+Third Party Software Used
+-------------------------
+1. The Lame executable
+2. Python 2.6 and several of its built-in modules (numpy, scipy, wave)

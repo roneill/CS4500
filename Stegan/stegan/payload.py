@@ -26,12 +26,15 @@ class Payload(object):
         return self.size
 
     def payloadSize(self):
+        """Returns a bytearray of the bytes representing
+           the size of the payload"""
         payloadLength = struct.pack("I", self.size)
         payloadLengthBytes = bytearray(payloadLength)
 
         return payloadLengthBytes
 
     def nextChunk(self, size):
+        """Gets the next n bytes of the payload file."""
         chunk = self._nextChunk(size)
         chunk_bytes = bytearray(chunk)
         

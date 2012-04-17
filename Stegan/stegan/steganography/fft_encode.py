@@ -5,6 +5,11 @@ import struct
 from stegan.payload import Payload
 from stegan.audio.wavefile import WaveFile
 
+# This value controls the volume of the encoded frequencies into
+# the carrier audio file. Decreasing this value improves 
+# steganography but decreases reliability in MP3 conversion.
+base_power_value = 1200000
+
 # The maximum payload density
 # (number of 256 frequency ranges we will encode in)
 max_payload_density = 78
@@ -19,7 +24,7 @@ tone_ranges = [[base + (offset * 256) + x for x in range(0, 256)]
 tone_ranges.reverse()
 
 def decode_data(sample_rate, chunk, encoding_depth):
-    """Decode a byte from a chunk of data"""
+    """Decode a byte from a chunk of data at the given depth"""
     fft_chunk = np.fft.rfft(chunk)
     freqs = np.fft.fftfreq(sample_rate)
     payload_byte = 0
@@ -38,7 +43,7 @@ def decode_data(sample_rate, chunk, encoding_depth):
     return payload_byte
 
 def decode_data_at_depth(sample_rate, chunk, furthest_depth):
-    """Decode bytes from chunks of data."""
+    """Decode bytes from chunks of data up to the given depth"""
     fft_chunk = np.fft.rfft(chunk)
     freqs = np.fft.fftfreq(sample_rate)
     processed_values = np.abs(fft_chunk)**2
@@ -47,7 +52,9 @@ def decode_data_at_depth(sample_rate, chunk, furthest_depth):
     payload_byte = 0
 
     for encoding_depth in range(0, furthest_depth):
-    	toneIndices = tone_ranges[encoding_depth]
+    	# At the current depth, get the range of tones
+        # that we will encode in
+        toneIndices = tone_ranges[encoding_depth]
     
     	toneValues = {}
     
@@ -55,12 +62,15 @@ def decode_data_at_depth(sample_rate, chunk, furthest_depth):
             toneValues[processed_values[toneIdx]] = i
             
     	maxTone = max(toneValues)
+
+        # The frequency with the highest power value should 
+        # represent the encoded byte
     	payload_byte = toneValues[maxTone]
         payload_bytes.append(payload_byte)
 
     return payload_bytes
 
-def test_encode_chunk(chunk, payload_byte, power_value, encoding_depth):
+def test_encode_chunk(chunk, payload_byte, power_boost, encoding_depth):
     """Decodes a chunk in memory to determine if a was
        successfully encoded"""
     fft_chunk = np.fft.rfft(chunk)
@@ -70,9 +80,9 @@ def test_encode_chunk(chunk, payload_byte, power_value, encoding_depth):
 	    
     power_values = [processed_values[i] for i in toneIndices]
 
-    index = toneIndices[payload_byte]
+    freq_index = toneIndices[payload_byte]
     max_tone = max(power_values)
-    fft_chunk[index] = math.sqrt(max_tone) + power_value
+    fft_chunk[freq_index] = math.sqrt(max_tone) + power_boost
 
     encoded_chunk = np.fft.irfft(fft_chunk)
 
@@ -115,11 +125,11 @@ def find_lowest_power_value(chunk, payload_byte, minimum_value,
                             sample_rate, encoding_depth):
     """Takes a chunk and a payload byte and attempts to encode at the
        minimum value. Keeps incrementing the minimum value by a factor
-       of two in order to find the lowest value that can be successfully
+       of 1.5 in order to find the lowest value that can be successfully
        decoded."""
-
+ 
     encoded_chunk = chunk
-    current_value = 1200000
+    current_value = base_power_value
     min_value = current_value
 
     while(not can_decode_byte(encoded_chunk, payload_byte,
@@ -131,7 +141,7 @@ def find_lowest_power_value(chunk, payload_byte, minimum_value,
     
     return current_value
 
-def update_progress(progress):
+def progress_bar_update(progress):
     sys.stdout.write('\r[{0}] {1}%'.format('#'*(progress), progress))
     sys.stdout.flush()
     
@@ -141,6 +151,9 @@ def encode(payload, container, trojan):
     """
 
     number_of_chunks = container.numChunks()
+
+    # This is the lowest amount of bytes we can store in a each chunk
+    # to encode the entire payload within the carrier audio file
     payload_density = int(math.ceil(len(payload) / number_of_chunks))
 
     print "[encode] len(payload) = %s" % len(payload)
@@ -159,7 +172,7 @@ def encode(payload, container, trojan):
                                  container.sampleRate())
     trojan.writeChunk(encoded_chunk)
 
-    encoded_payload = 0
+    encoded_payload_length = 0
 
     # write the payload to the file
     for idx, chunk in enumerate(container.chunks()):
@@ -169,14 +182,14 @@ def encode(payload, container, trojan):
             encoded = encode_chunk(chunk, payload_chunk,
                                    container.sampleRate())
             trojan.writeChunk(encoded)
-            encoded_payload += len(payload_chunk)
+            encoded_payload_length += len(payload_chunk)
 
-            update_progress(encoded_payload * 100 / len(payload))
+            progress_bar_update(encoded_payload_length * 100 / len(payload))
             
         else:
             trojan.writeChunk(chunk)
         
-    print "Encoded " + str(encoded_payload) + " bytes"
+    print "Encoded " + str(encoded_payload_length) + " bytes"
 
 def decode(trojan, payload):
     """ Decode a payload from a trojan AudioFile that has been encoded 
@@ -215,7 +228,7 @@ def decode(trojan, payload):
             
             payload_bytes += chunk_payload_bytes
 
-            update_progress(len(payload_bytes) * 100 / payload_len)
+            progress_bar_update(len(payload_bytes) * 100 / payload_len)
             
         else:
             break
