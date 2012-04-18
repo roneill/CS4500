@@ -26,6 +26,16 @@ path, including the output path for encode, you can use an mp3 or wave
 file. Our software will make the necessary conversions using the Lame
 executable.
 
+Controlling Steganography
+-------------------------
+
+There is a value in fft_encode.py called base_power_value that
+controls the steganography of the payload. This value is currently set
+to 1200000. This value was choosen because it offers a good mix of
+steganographc quality and reliablity of payload retrieval. A value of
+300000 or so will greatly increase steganographic quality at the
+expense of payload retrieval reliability.
+
 Algorithm Explanation 
 ---------------------
 First, we break the container audio file into chunks, each chunk being
