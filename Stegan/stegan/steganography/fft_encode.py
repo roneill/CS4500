@@ -8,7 +8,7 @@ from stegan.audio.wavefile import WaveFile
 # This value controls the volume of the encoded frequencies into
 # the carrier audio file. Decreasing this value improves 
 # steganography but decreases reliability in MP3 conversion.
-base_power_value = 300000
+base_power_value = 1200000
 
 # The maximum payload density
 # (number of 256 frequency ranges we will encode in)
